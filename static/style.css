@@ -1,0 +1,11 @@
+h1 { 
+  margin: 1em 0;
+  color: #7c795d; 
+  font-family: 'Trocchi', serif; 
+  font-size: 55px; font-weight: normal; 
+  line-height: 48px; margin: 0; 
+}
+body {
+  font-family: 'Trocchi', serif;
+  text-align: center;
+}
