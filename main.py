@@ -7,6 +7,7 @@ app = Flask(__name__)
 
 aws_cognito = Cognito('ap-southeast-1_VXmFIo9H3', '2rmru8n4jfrn7hri8rco7ll0nf', username='User')
 
+
 # Querying dynamo by email.
 def query_dynamo(email, dynamodb=None):
     dynamodb = boto3.resource('dynamodb')
@@ -78,12 +79,25 @@ def signup():
             response = aws_cognito.register(user_name, password)
             print('Register response')
             print(response)
-            return render_template('email-verification.html')
+            return render_template('email-verification.html', email=user_email, user_name=user_name)
         except Exception as e:
             return render_template('signup.html', error_msg=e)
 
     else:
         return render_template('signup.html')
+
+
+@app.route('/email-verification', methods=["POST"])
+def emailVerification():
+    if request.method == "POST":
+        user_name = request.form.get("user_name")
+        ver_code = request.form.get("ver_code")
+
+        try:
+            aws_cognito.confirm_sign_up(ver_code, user_name)
+            return render_template('home.html')
+        except Exception as e:
+            return render_template('email-verification.html', error_msg=e)
 
 
 if __name__ == '__main__':
