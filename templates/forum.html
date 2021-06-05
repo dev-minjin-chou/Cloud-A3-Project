@@ -1,0 +1,17 @@
+{% extends "index.html" %}
+
+{% block head %}
+  {{super()}}
+{% endblock %}
+
+{% block header %}
+  <br>
+  <h1>Welcome to Forumsbook</h1><br>
+
+  {% if error_msg %}
+    <div class="alert alert-danger" role="alert">
+        Error: {{ error_msg }}
+    </div>
+  {% endif %}
+{% endblock %}
+
