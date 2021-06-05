@@ -66,7 +66,7 @@ def register():
             response = aws_cognito.register(username, password)
             print('Register response')
             print(response)
-            return redirect(url_for('root'))
+            return render_template('email-verification.html', email=user_email)
         except Exception as e:
             return render_template('register.html', error_msg=e)
 
@@ -77,12 +77,12 @@ def register():
 @app.route('/email-verification', methods=["POST"])
 def emailVerification():
     if request.method == "POST":
-        user_name = request.form.get("user_name")
+        username = request.form.get("username")
         ver_code = request.form.get("ver_code")
 
         try:
-            aws_cognito.confirm_sign_up(ver_code, user_name)
-            return redirect(url_for('root'))
+            aws_cognito.confirm_sign_up(ver_code, username)
+            return redirect(url_for('forum'))
         except Exception as e:
             return render_template('email-verification.html', error_msg=e)
 
