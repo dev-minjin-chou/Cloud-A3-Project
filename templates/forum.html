@@ -4,7 +4,7 @@
   {{super()}}
 {% endblock %}
 
-{% block header %} 
+{% block header %}
   <style>
         .button {
         border: none;
@@ -18,24 +18,24 @@
         transition-duration: 0.4s;
         cursor: pointer;
         }
-        
+
         .button1 {
-        background-color: white; 
-        color: black; 
+        background-color: white;
+        color: black;
         border: 2px solid #1e8000;
         }
-        
+
         .button1:hover {
         background-color: #1e8000;
         color: white;
         }
-        
+
         .button2 {
-        background-color: #1e8000; 
-        color: black; 
+        background-color: #1e8000;
+        color: black;
         border: 2px solid #000000;
         }
-        
+
         .button2:hover {
         background-color: #000000;
         color: white;
@@ -49,14 +49,5 @@
         Error: {{ error_msg }}
     </div>
   {% endif %}
-
-  <form action="{{ url_for('login') }}" method="GET">
-    <button class="button button1" type="submit" class="btn btn-primary">Log in</button>
-  </form>
-  <br>
-  <form action="{{ url_for('register') }}" method="GET">
-    <button class="button button2" type="submit" class="btn btn-primary" color="white">Sign up</button>
-  </form>
-
 {% endblock %}
 
