@@ -44,7 +44,7 @@ def login():
 
         try:
             global loggedIn_user
-            loggedIn_user = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USER_POOL_NAME)
+            loggedIn_user = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=username)
             loggedIn_user.authenticate(password)
             return redirect(url_for('root'))
         except Exception as e:
@@ -82,7 +82,7 @@ def emailVerification():
 
         try:
             aws_cognito.confirm_sign_up(ver_code, username)
-            return redirect(url_for('forum'))
+            return redirect(url_for('login'))
         except Exception as e:
             return render_template('email-verification.html', error_msg=e)
 
