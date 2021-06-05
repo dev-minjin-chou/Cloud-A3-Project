@@ -67,24 +67,24 @@ def login():
         return render_template('login.html')
 
 
-@app.route('/signup', methods=["POST", "GET"])
-def signup():
+@app.route('/register', methods=["POST", "GET"])
+def register():
     if request.method == "POST":
         user_email = request.form.get("email")
-        user_name = request.form.get("user_name")
+        username = request.form.get("username")
         password = request.form.get("password")
 
         try:
             aws_cognito.set_base_attributes(email=user_email)
-            response = aws_cognito.register(user_name, password)
+            response = aws_cognito.register(username, password)
             print('Register response')
             print(response)
-            return render_template('email-verification.html', email=user_email, user_name=user_name)
+            return render_template('email-verification.html', email=user_email, user_name=username)
         except Exception as e:
-            return render_template('signup.html', error_msg=e)
+            return render_template('register.html', error_msg=e)
 
     else:
-        return render_template('signup.html')
+        return render_template('register.html')
 
 
 @app.route('/email-verification', methods=["POST"])
