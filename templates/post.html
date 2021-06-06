@@ -8,21 +8,6 @@
     <div class="container mt-4">
         {% if post %}
             <form action="{{ url_for('likePost') }}" method="POST">
-                <div class="row">
-                    <div class="col-md-4">
-                        <label for="subject">Subject:</label>
-                    </div>
-                    <div class="col-md-8">
-                        <input
-                                id="subject"
-                                type="text"
-                                class="form-control"
-                                value="{{ post['subject'] }}"
-                                disabled
-                        />
-                    </div>
-                </div>
-
                 <div class="row my-3">
                     <div class="col-md-4">
                         <label for="message">Message:</label>
