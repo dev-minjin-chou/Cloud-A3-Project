@@ -17,10 +17,16 @@ loggedIn_user = None
 
 @app.route("/")
 def root():
-    if loggedIn_user is not None:
-        return render_template("forum.html")
+    # if loggedIn_user is not None:
+    db = mongo_client.get_database(Config.DB_NAME)
+    users = db.get_collection('users').find()
+    posts = []
+    for u in users:
+        for post in u['posts']:
+            posts.append({'subject': post['subject'], 'username': u['username']})
+    return render_template("forum.html", posts=posts)
 
-    return render_template("home.html")
+    # return render_template("home.html")
 
 
 @app.route('/login', methods=["POST", "GET"])
