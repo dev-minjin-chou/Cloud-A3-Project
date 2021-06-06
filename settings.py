@@ -16,3 +16,5 @@ class Config:
     DB_USERNAME = os.environ.get("DB_USERNAME")
     DB_PASSWORD = os.environ.get("DB_PASSWORD")
     DB_NAME = os.environ.get("DB_NAME")
+
+    SENDER_EMAIL = os.environ.get("SENDER_EMAIL")

@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
 
 from settings import Config
+from mail import MailSender
 
 application = app = Flask(__name__)
 
@@ -107,11 +108,11 @@ def viewPost(post_id):
     try:
         db = mongo_client.get_database(Config.DB_NAME)
         results = db.get_collection('users').find_one({'username': loggedIn_user},
-                                                    {'posts': {
-                                                        "$elemMatch": {
-                                                            "id": post_id
-                                                        }
-                                                    }})
+                                                      {'posts': {
+                                                          "$elemMatch": {
+                                                              "id": post_id
+                                                          }
+                                                      }})
         post = results['posts'][0]
         post['postedBy'] = loggedIn_user
         return render_template('post.html', post=post)
@@ -121,7 +122,17 @@ def viewPost(post_id):
 
 @app.route('/post', methods=["POST"])
 def likePost():
-    return redirect(url_for('root'))
+    try:
+        # TODO: Get user email from AWS Cognito
+        # cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=loggedIn_user)
+        # user = aws_cognito.get_user()
+        # email = user['email']
+
+        mailSender = MailSender(Config.SENDER_EMAIL)
+        mailSender.sendMail(f'{loggedIn_user} just liked your post', 'yiswfeoctgu@logicstreak.com')
+        return redirect(url_for('root'))
+    except Exception as e:
+        return render_template('post.html', error_msg=e)
 
 
 @app.route('/email-verification', methods=["POST"])
