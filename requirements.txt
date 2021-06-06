@@ -4,3 +4,4 @@ requests==2.25.0
 pycognito==2021.3.1
 pymongo==3.11.4
 python-dotenv==0.17.1
+uuid==1.30

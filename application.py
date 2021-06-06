@@ -1,10 +1,11 @@
-import os
+import datetime
+import uuid
 
+import pymongo
 from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
-import pymongo
+
 from settings import Config
-import datetime
 
 application = app = Flask(__name__)
 
@@ -26,8 +27,10 @@ def root():
     posts = []
     for u in users:
         for post in u['posts']:
-            posts.append({'subject': post['subject'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
-                          'username': u['username']})
+            posts.append(
+                {'post_id': post['id'], 'subject': post['subject'],
+                 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
+                 'username': u['username']})
     return render_template("forum.html", posts=posts)
 
 
@@ -81,7 +84,7 @@ def createPost():
         db = mongo_client.get_database(Config.DB_NAME)
         users = db.get_collection('users')
         user = users.find_one({'username': loggedIn_user})
-        post = {'subject': subject, 'message': message, 'postedAt': datetime.datetime.now()}
+        post = {'id': str(uuid.uuid4()), 'subject': subject, 'message': message, 'postedAt': datetime.datetime.now()}
 
         if user is None:
             users.insert_one({'username': loggedIn_user, 'posts': [post]})
@@ -94,6 +97,31 @@ def createPost():
         return redirect(url_for('root'))
     except Exception as e:
         return render_template('forum.html', error_msg=e)
+
+
+@app.route('/posts/<string:post_id>', methods=["GET"])
+def viewPost(post_id):
+    if request.method == "POST":
+        return redirect(url_for('root'))
+
+    try:
+        db = mongo_client.get_database(Config.DB_NAME)
+        results = db.get_collection('users').find_one({'username': loggedIn_user},
+                                                    {'posts': {
+                                                        "$elemMatch": {
+                                                            "id": post_id
+                                                        }
+                                                    }})
+        post = results['posts'][0]
+        post['postedBy'] = loggedIn_user
+        return render_template('post.html', post=post)
+    except Exception as e:
+        return render_template('post.html', error_msg=e)
+
+
+@app.route('/post', methods=["POST"])
+def likePost():
+    return redirect(url_for('root'))
 
 
 @app.route('/email-verification', methods=["POST"])
