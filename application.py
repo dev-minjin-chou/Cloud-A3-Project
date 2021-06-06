@@ -15,6 +15,7 @@ mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
 loggedIn_username = None
+loggedIn_user = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 DB_POST_COLLECTION = 'posts'
 
@@ -36,8 +37,9 @@ def login():
         password = request.form.get("password")
 
         try:
-            cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=username)
-            cognito.authenticate(password)
+            global loggedIn_user
+            loggedIn_user = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=username)
+            loggedIn_user.authenticate(password)
 
             global loggedIn_username
             loggedIn_username = username
@@ -74,6 +76,23 @@ def register():
         return render_template('email-verification.html', email=user_email)
     else:
         return render_template('register.html')
+
+
+@app.route('/logout', methods=["GET"])
+def logout():
+    global loggedIn_user
+    user = vars(loggedIn_user)
+    id_token = user['id_token']
+    refresh_token = user['refresh_token']
+    access_token = user['access_token']
+    cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID,
+                      id_token=id_token, refresh_token=refresh_token,
+                      access_token=access_token)
+    cognito.logout()
+    global loggedIn_username
+    loggedIn_username = None
+
+    return redirect(url_for('root'))
 
 
 @app.route('/create-post', methods=["POST"])
