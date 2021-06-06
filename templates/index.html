@@ -4,13 +4,15 @@
     {% block head %}
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-              integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
-              crossorigin="anonymous">
         <title>Forumsbook</title>
         <script src="{{ url_for('static', filename='script.js') }}"></script>
         <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
+        <!-- Boostrap for css -->
+        <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+        {#    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>#}
+        <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
     {% endblock %}
     <style>
         footer {
@@ -27,16 +29,10 @@
 <nav class="navbar navbar-dark bg-dark">
     <a href='/' style="font-family: 'Calibri'; color:whitesmoke; font-size:25px; text-decoration:none;">Forumsbook</a>
 </nav>
-{% block header %} {% endblock %}
+{% block body %} {% endblock %}
 
 <footer>
     <p>Done by: Minjin Chou & Chatchapat Dechathaweewat</p>
 </footer>
-
-<!-- Boostrap for css -->
-<link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
-{#    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>#}
-<script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
 </body>
 </html>
