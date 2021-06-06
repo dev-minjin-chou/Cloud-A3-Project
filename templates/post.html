@@ -14,6 +14,7 @@
                     </div>
                     <div class="col-md-8">
                         <input
+                                id="subject"
                                 type="text"
                                 class="form-control"
                                 value="{{ post['subject'] }}"
@@ -28,6 +29,7 @@
                     </div>
                     <div class="col-md-8">
                         <input
+                                id="message"
                                 type="text"
                                 class="form-control"
                                 value="{{ post['message'] }}"
@@ -42,6 +44,7 @@
                     </div>
                     <div class="col-md-8">
                         <input
+                                id="postedAt"
                                 type="text"
                                 class="form-control"
                                 value="{{ post['postedAt'] }}"
@@ -50,17 +53,25 @@
                     </div>
                 </div>
 
-                <div class="row my-3">
-                    <div class="col-md-4">
-                        <label for="postedBy">Posted By:</label>
-                    </div>
-                    <div class="col-md-8">
-                        <input
-                                type="text"
-                                class="form-control"
-                                value="{{ post['postedBy'] }}"
-                                disabled
-                        />
+                <div class="form-group">
+                    <div class="row my-3">
+                        <div class="col-md-4">
+                            <label for="postedBy">Posted By:</label>
+                        </div>
+                        <div class="col-md-8">
+                            <input
+                                    id="postedBy"
+                                    type="text"
+                                    class="form-control"
+                                    value="{{ post['postedBy'] }}"
+                                    disabled
+                            />
+
+                            <input
+                                    name="postedBy"
+                                    type="hidden"
+                                    value="{{ post['postedBy'] }}"/>
+                        </div>
                     </div>
                 </div>
 

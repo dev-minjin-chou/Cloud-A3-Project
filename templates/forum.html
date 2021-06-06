@@ -52,7 +52,7 @@
             </tr>
             {% for post in posts %}
                 <tr>
-                    <td><a href="/posts/{{ post['post_id'] }}">{{ post['subject'] }}</a></td>
+                    <td><a href="/users/{{ post['username'] }}/posts/{{ post['post_id'] }}">{{ post['subject'] }}</a></td>
                     <td>{{ post['postedAt'] }}</td>
                     <td>{{ post['username'] }}</td>
                 </tr>

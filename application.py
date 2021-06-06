@@ -109,21 +109,21 @@ def createPost():
         return render_template('forum.html', error_msg=e)
 
 
-@app.route('/posts/<string:post_id>', methods=["GET"])
-def viewPost(post_id):
+@app.route('/users/<string:username>/posts/<string:post_id>', methods=["GET"])
+def viewPost(username, post_id):
     if request.method == "POST":
         return redirect(url_for('root'))
 
     try:
         db = mongo_client.get_database(Config.DB_NAME)
-        results = db.get_collection('users').find_one({'username': loggedIn_username},
+        results = db.get_collection('users').find_one({'username': username},
                                                       {'posts': {
                                                           "$elemMatch": {
                                                               "id": post_id
                                                           }
                                                       }})
         post = results['posts'][0]
-        post['postedBy'] = loggedIn_username
+        post['postedBy'] = username
         return render_template('post.html', post=post)
     except Exception as e:
         return render_template('post.html', error_msg=e)
@@ -132,13 +132,18 @@ def viewPost(post_id):
 @app.route('/post', methods=["POST"])
 def likePost():
     try:
-        # TODO: Get user email from AWS Cognito
-        # cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=loggedIn_user)
-        # user = aws_cognito.get_user()
-        # email = user['email']
+        posted_by = request.form.get("postedBy")
+        db = mongo_client.get_database(Config.DB_NAME)
+        user = db.get_collection('users').find_one({'username': posted_by})
 
+        if 'email' not in user:
+            err_msg = 'This user has not been verified with email'
+            print(err_msg)
+            return render_template('post.html', error_msg=err_msg)
+
+        email = user['email']
         mailSender = MailSender(Config.SENDER_EMAIL)
-        mailSender.sendMail(f'{loggedIn_username} just liked your post', 'yiswfeoctgu@logicstreak.com')
+        mailSender.sendMail(f'{loggedIn_username} just liked your post', email)
         return redirect(url_for('root'))
     except Exception as e:
         return render_template('post.html', error_msg=e)
