@@ -1,19 +1,35 @@
-import boto3
-from boto3.dynamodb.conditions import Key
+import os
+
 from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
+import pymongo
+from settings import Config
+import pprint
 
-app = Flask(__name__)
+application = app = Flask(__name__)
 
-USER_POOL_ID = 'ap-southeast-1_VXmFIo9H3'
-CLIENT_ID = '2rmru8n4jfrn7hri8rco7ll0nf'
-USER_POOL_NAME = 'User'
-aws_cognito = Cognito(USER_POOL_ID, CLIENT_ID, username=USER_POOL_NAME)
+aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USER_POOL_NAME)
+# mongo_client = pymongo.MongoClient(Config.DOCUMENTDB_CLUSTER_ENDPOINT, username=Config.DOCUMENTDB_USERNAME,
+#                                    password=Config.DOCUMENTDB_PASSWORD, retryWrites='false')
+
 loggedIn_user = None
 
 
 @app.route("/")
 def root():
+    # try:
+    # db = mongo_client.forumsbook
+    # col = db.users
+    #
+    # result = col.find()
+    #
+    # col.insert({'username': 'north'})
+    # pprint.pprint(result)
+    # col.insert_one({'hello': 'Amazon DocumentDB'})
+    # except Exception as e:
+    #     print('Error')
+    #     print(e)
+
     if loggedIn_user is not None:
         return render_template("forum.html")
 
@@ -28,7 +44,7 @@ def login():
 
         try:
             global loggedIn_user
-            loggedIn_user = Cognito(USER_POOL_ID, CLIENT_ID, username=username)
+            loggedIn_user = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=username)
             loggedIn_user.authenticate(password)
             return redirect(url_for('root'))
         except Exception as e:
@@ -50,7 +66,7 @@ def register():
             response = aws_cognito.register(username, password)
             print('Register response')
             print(response)
-            return redirect(url_for('root'))
+            return render_template('email-verification.html', email=user_email)
         except Exception as e:
             return render_template('register.html', error_msg=e)
 
@@ -61,15 +77,17 @@ def register():
 @app.route('/email-verification', methods=["POST"])
 def emailVerification():
     if request.method == "POST":
-        user_name = request.form.get("user_name")
+        username = request.form.get("username")
         ver_code = request.form.get("ver_code")
 
         try:
-            aws_cognito.confirm_sign_up(ver_code, user_name)
-            return redirect(url_for('root'))
+            aws_cognito.confirm_sign_up(ver_code, username)
+            return redirect(url_for('login'))
         except Exception as e:
             return render_template('email-verification.html', error_msg=e)
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8080, debug=True)
+    if Config.DEVELOPMENT == 'true':
+        app.debug = True
+    app.run(host='127.0.0.1', port=8080)
