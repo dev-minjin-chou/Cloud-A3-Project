@@ -12,6 +12,7 @@ class Config:
     CLIENT_ID = os.environ.get("CLIENT_ID")
     USER_POOL_NAME = os.environ.get("USER_POOL_NAME")
 
-    DOCUMENTDB_CLUSTER_ENDPOINT = os.environ.get("DOCUMENTDB_CLUSTER_ENDPOINT")
-    DOCUMENTDB_USERNAME = os.environ.get("DOCUMENTDB_USERNAME")
-    DOCUMENTDB_PASSWORD = os.environ.get("DOCUMENTDB_PASSWORD")
+    DB_HOST = os.environ.get("DB_HOST")
+    DB_USERNAME = os.environ.get("DB_USERNAME")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD")
+    DB_NAME = os.environ.get("DB_NAME")

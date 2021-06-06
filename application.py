@@ -9,27 +9,14 @@ import pprint
 application = app = Flask(__name__)
 
 aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USER_POOL_NAME)
-# mongo_client = pymongo.MongoClient(Config.DOCUMENTDB_CLUSTER_ENDPOINT, username=Config.DOCUMENTDB_USERNAME,
-#                                    password=Config.DOCUMENTDB_PASSWORD, retryWrites='false')
+mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
+                                   password=Config.DB_PASSWORD, retryWrites='false')
 
 loggedIn_user = None
 
 
 @app.route("/")
 def root():
-    # try:
-    # db = mongo_client.forumsbook
-    # col = db.users
-    #
-    # result = col.find()
-    #
-    # col.insert({'username': 'north'})
-    # pprint.pprint(result)
-    # col.insert_one({'hello': 'Amazon DocumentDB'})
-    # except Exception as e:
-    #     print('Error')
-    #     print(e)
-
     if loggedIn_user is not None:
         return render_template("forum.html")
 
@@ -43,9 +30,12 @@ def login():
         password = request.form.get("password")
 
         try:
+            cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=username)
+            cognito.authenticate(password)
+
             global loggedIn_user
-            loggedIn_user = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=username)
-            loggedIn_user.authenticate(password)
+            loggedIn_user = username
+
             return redirect(url_for('root'))
         except Exception as e:
             error_msg = e
@@ -74,6 +64,30 @@ def register():
         return render_template('register.html')
 
 
+@app.route('/post', methods=["POST"])
+def postMsg():
+    subject = request.form.get("subject")
+    message = request.form.get("message")
+
+    try:
+        db = mongo_client.get_database(Config.DB_NAME)
+        users = db.get_collection('users')
+        user = users.find_one({'username': loggedIn_user})
+        post = {'subject': subject, 'message': message}
+
+        if user is None:
+            users.insert_one({'username': loggedIn_user, 'posts': [post]})
+        else:
+            update_document = {
+                '$push': {"posts": post}
+            }
+            users.update_one({'username': loggedIn_user}, update_document)
+
+        return render_template('forum.html')
+    except Exception as e:
+        return render_template('forum.html', error_msg=e)
+
+
 @app.route('/email-verification', methods=["POST"])
 def emailVerification():
     if request.method == "POST":
@@ -82,7 +96,11 @@ def emailVerification():
 
         try:
             aws_cognito.confirm_sign_up(ver_code, username)
-            return redirect(url_for('login'))
+
+            global loggedIn_user
+            loggedIn_user = username
+
+            return redirect(url_for('root'))
         except Exception as e:
             return render_template('email-verification.html', error_msg=e)
 
