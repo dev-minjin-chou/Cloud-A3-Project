@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
 import pymongo
 from settings import Config
-import pprint
+import datetime
 
 application = app = Flask(__name__)
 
@@ -13,20 +13,22 @@ mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
 loggedIn_user = None
+DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 
 
 @app.route("/")
 def root():
-    # if loggedIn_user is not None:
+    if loggedIn_user is None:
+        return render_template("home.html")
+
     db = mongo_client.get_database(Config.DB_NAME)
     users = db.get_collection('users').find()
     posts = []
     for u in users:
         for post in u['posts']:
-            posts.append({'subject': post['subject'], 'username': u['username']})
+            posts.append({'subject': post['subject'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
+                          'username': u['username']})
     return render_template("forum.html", posts=posts)
-
-    # return render_template("home.html")
 
 
 @app.route('/login', methods=["POST", "GET"])
@@ -70,8 +72,8 @@ def register():
         return render_template('register.html')
 
 
-@app.route('/post', methods=["POST"])
-def postMsg():
+@app.route('/create-post', methods=["POST"])
+def createPost():
     subject = request.form.get("subject")
     message = request.form.get("message")
 
@@ -79,7 +81,7 @@ def postMsg():
         db = mongo_client.get_database(Config.DB_NAME)
         users = db.get_collection('users')
         user = users.find_one({'username': loggedIn_user})
-        post = {'subject': subject, 'message': message}
+        post = {'subject': subject, 'message': message, 'postedAt': datetime.datetime.now()}
 
         if user is None:
             users.insert_one({'username': loggedIn_user, 'posts': [post]})
@@ -89,7 +91,7 @@ def postMsg():
             }
             users.update_one({'username': loggedIn_user}, update_document)
 
-        return render_template('forum.html')
+        return redirect(url_for('root'))
     except Exception as e:
         return render_template('forum.html', error_msg=e)
 
