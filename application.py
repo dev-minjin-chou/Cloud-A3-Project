@@ -14,19 +14,22 @@ aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USE
 mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
-loggedIn_user = None
+loggedIn_username = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 
 
 @app.route("/")
 def root():
-    if loggedIn_user is None:
+    if loggedIn_username is None:
         return render_template("home.html")
 
     db = mongo_client.get_database(Config.DB_NAME)
     users = db.get_collection('users').find()
     posts = []
     for u in users:
+        if 'posts' not in u:
+            break
+
         for post in u['posts']:
             posts.append(
                 {'post_id': post['id'], 'subject': post['subject'],
@@ -45,8 +48,8 @@ def login():
             cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=username)
             cognito.authenticate(password)
 
-            global loggedIn_user
-            loggedIn_user = username
+            global loggedIn_username
+            loggedIn_username = username
 
             return redirect(url_for('root'))
         except Exception as e:
@@ -68,10 +71,16 @@ def register():
             response = aws_cognito.register(username, password)
             print('Register response')
             print(response)
-            return render_template('email-verification.html', email=user_email)
         except Exception as e:
             return render_template('register.html', error_msg=e)
 
+        try:
+            db = mongo_client.get_database(Config.DB_NAME)
+            db.get_collection('users').insert_one({'username': username, 'email': user_email})
+        except Exception as e:
+            return render_template('register.html', error_msg=e)
+
+        return render_template('email-verification.html', email=user_email)
     else:
         return render_template('register.html')
 
@@ -84,16 +93,16 @@ def createPost():
     try:
         db = mongo_client.get_database(Config.DB_NAME)
         users = db.get_collection('users')
-        user = users.find_one({'username': loggedIn_user})
+        user = users.find_one({'username': loggedIn_username})
         post = {'id': str(uuid.uuid4()), 'subject': subject, 'message': message, 'postedAt': datetime.datetime.now()}
 
         if user is None:
-            users.insert_one({'username': loggedIn_user, 'posts': [post]})
+            users.insert_one({'username': loggedIn_username, 'posts': [post]})
         else:
             update_document = {
                 '$push': {"posts": post}
             }
-            users.update_one({'username': loggedIn_user}, update_document)
+            users.update_one({'username': loggedIn_username}, update_document)
 
         return redirect(url_for('root'))
     except Exception as e:
@@ -107,14 +116,14 @@ def viewPost(post_id):
 
     try:
         db = mongo_client.get_database(Config.DB_NAME)
-        results = db.get_collection('users').find_one({'username': loggedIn_user},
+        results = db.get_collection('users').find_one({'username': loggedIn_username},
                                                       {'posts': {
                                                           "$elemMatch": {
                                                               "id": post_id
                                                           }
                                                       }})
         post = results['posts'][0]
-        post['postedBy'] = loggedIn_user
+        post['postedBy'] = loggedIn_username
         return render_template('post.html', post=post)
     except Exception as e:
         return render_template('post.html', error_msg=e)
@@ -129,14 +138,14 @@ def likePost():
         # email = user['email']
 
         mailSender = MailSender(Config.SENDER_EMAIL)
-        mailSender.sendMail(f'{loggedIn_user} just liked your post', 'yiswfeoctgu@logicstreak.com')
+        mailSender.sendMail(f'{loggedIn_username} just liked your post', 'yiswfeoctgu@logicstreak.com')
         return redirect(url_for('root'))
     except Exception as e:
         return render_template('post.html', error_msg=e)
 
 
 @app.route('/email-verification', methods=["POST"])
-def emailVerification():
+def verifyEmail():
     if request.method == "POST":
         username = request.form.get("username")
         ver_code = request.form.get("ver_code")
@@ -144,8 +153,8 @@ def emailVerification():
         try:
             aws_cognito.confirm_sign_up(ver_code, username)
 
-            global loggedIn_user
-            loggedIn_user = username
+            global loggedIn_username
+            loggedIn_username = username
 
             return redirect(url_for('root'))
         except Exception as e:
