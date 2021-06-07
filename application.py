@@ -1,9 +1,11 @@
 import datetime
+import pprint
 
 import pymongo
 from bson.objectid import ObjectId
 from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
+import requests
 
 from mail import MailSender
 from settings import Config
@@ -61,9 +63,14 @@ def register():
 
         try:
             aws_cognito.set_base_attributes(email=user_email)
-            response = aws_cognito.register(username, password)
-            print('Register response')
-            print(response)
+            cognito_response = aws_cognito.register(username, password)
+            print('Cognito response:')
+            pprint.pprint(cognito_response)
+
+            response = requests.post(Config.REGISTER_API_ENDPOINT, data={'user_name': username, 'password': password})
+            print('Registration response:')
+            pprint.pprint(response)
+
         except Exception as e:
             return render_template('register.html', error_msg=e)
 
