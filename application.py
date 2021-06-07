@@ -10,7 +10,7 @@ from mail import MailSender
 
 application = app = Flask(__name__)
 
-aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USER_POOL_NAME)
+# aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USER_POOL_NAME)
 mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
@@ -143,7 +143,7 @@ def likePost():
 
         email = user['email']
         mailSender = MailSender(Config.SENDER_EMAIL)
-        mailSender.sendMail(f'{loggedIn_username} just liked your post', email)
+        # mailSender.sendMail(f'{loggedIn_username} just liked your post', email)
         return redirect(url_for('root'))
     except Exception as e:
         return render_template('post.html', error_msg=e)
