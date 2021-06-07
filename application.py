@@ -6,6 +6,7 @@ from bson.objectid import ObjectId
 from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
 import requests
+import logging
 
 from mail import MailSender
 from settings import Config
@@ -64,20 +65,28 @@ def register():
         try:
             aws_cognito.set_base_attributes(email=user_email)
             cognito_response = aws_cognito.register(username, password)
-            print('Cognito response:')
-            pprint.pprint(cognito_response)
-
-            response = requests.post(Config.REGISTER_API_ENDPOINT, data={'user_name': username, 'password': password})
-            print('Registration response:')
-            pprint.pprint(response)
-
+            logging.debug('Cognito response:')
+            logging.debug(cognito_response)
         except Exception as e:
+            logging.error('AWS Cognito API error')
+            logging.error(e)
+            return render_template('register.html', error_msg=e)
+
+        try:
+            response = requests.post(Config.REGISTER_API_ENDPOINT, data={'user_name': username, 'password': password})
+            logging.debug('Registration response:')
+            logging.debug(response)
+        except Exception as e:
+            logging.error('Calling register api error')
+            logging.error(e)
             return render_template('register.html', error_msg=e)
 
         try:
             db = mongo_client.get_database(Config.DB_NAME)
             db.get_collection('users').insert_one({'username': username, 'email': user_email})
         except Exception as e:
+            logging.error('Insert user into database error')
+            logging.error(e)
             return render_template('register.html', error_msg=e)
 
         return render_template('email-verification.html', email=user_email)
@@ -168,6 +177,8 @@ def verifyEmail():
 
             return redirect(url_for('root'))
         except Exception as e:
+            logging.error('Email verification error')
+            logging.error(e)
             return render_template('email-verification.html', error_msg=e)
 
 
