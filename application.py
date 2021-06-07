@@ -4,7 +4,7 @@ import uuid
 import pymongo
 from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
-
+from boto3.dynamodb.conditions import Key, Attr
 from settings import Config
 from mail import MailSender
 
@@ -16,7 +16,7 @@ mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
 
 loggedIn_username = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
-
+signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
 
 @app.route("/")
 def root():
@@ -59,28 +59,49 @@ def login():
         return render_template('login.html')
 
 
+def query(email, dynamodb=None):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('forum-login')
+
+    response = table.query(
+        KeyConditionExpression=Key('email').eq(email),
+    )
+    return response['Items']
+
+
 @app.route('/register', methods=["POST", "GET"])
 def register():
     if request.method == "POST":
-        user_email = request.form.get("email")
-        username = request.form.get("username")
+        email = request.form.get("email")
+        user_name = request.form.get("username")
         password = request.form.get("password")
 
+        json_data = {   'email': email,
+                        'user_name': user_name,
+                        'password': password }
+
         try:
-            aws_cognito.set_base_attributes(email=user_email)
-            response = aws_cognito.register(username, password)
+            aws_cognito.set_base_attributes(email=email)
+            response = aws_cognito.register(user_name, password)
             print('Register response')
             print(response)
         except Exception as e:
             return render_template('register.html', error_msg=e)
 
         try:
-            db = mongo_client.get_database(Config.DB_NAME)
-            db.get_collection('users').insert_one({'username': username, 'email': user_email})
+            existing_user = query(email)
+            if len(existing_user) > 0:
+                if email == existing_user[0]['email']:
+                    error_msg = 'The email already exists.'
+                    return render_template('register.html', error_msg=error_msg)
+            else:
+                return render_template('email-verification.html', email=email)
+            #db = mongo_client.get_database(Config.DB_NAME)
+            #db.get_collection('users').insert_one({'username': username, 'email': user_email})
         except Exception as e:
             return render_template('register.html', error_msg=e)
 
-        return render_template('email-verification.html', email=user_email)
+        return render_template('email-verification.html', email=email)
     else:
         return render_template('register.html')
 
