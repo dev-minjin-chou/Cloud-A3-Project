@@ -3,7 +3,7 @@ import pprint
 
 import pymongo
 from bson.objectid import ObjectId
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from pycognito import Cognito
 import requests
 import logging
@@ -29,8 +29,18 @@ def root():
         return render_template("home.html")
 
     db = mongo_client.get_database(Config.DB_NAME)
-    posts = list(db.get_collection(DB_POST_COLLECTION).find())
-    return render_template("forum.html", posts=posts)
+    db_posts = list(db.get_collection(DB_POST_COLLECTION).find())
+
+    posts = []
+    for post in db_posts:
+        posts.append({'message': post['message'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
+                      'postedBy': post['postedBy']})
+
+    success_message = ''
+    if 'success_message' in session:
+        success_message = session['success_message']
+
+    return render_template("forum.html", posts=posts, username=loggedIn_username, success_message=success_message)
 
 
 @app.route('/login', methods=["POST", "GET"])
@@ -69,15 +79,6 @@ def register():
             logging.debug(cognito_response)
         except Exception as e:
             logging.error('AWS Cognito API error')
-            logging.error(e)
-            return render_template('register.html', error_msg=e)
-
-        try:
-            response = requests.post(Config.REGISTER_API_ENDPOINT, data={'user_name': username, 'password': password})
-            logging.debug('Registration response:')
-            logging.debug(response)
-        except Exception as e:
-            logging.error('Calling register api error')
             logging.error(e)
             return render_template('register.html', error_msg=e)
 
@@ -174,15 +175,50 @@ def verifyEmail():
 
             global loggedIn_username
             loggedIn_username = username
-
-            return redirect(url_for('root'))
         except Exception as e:
             logging.error('Email verification error')
             logging.error(e)
             return render_template('email-verification.html', error_msg=e)
 
+        # TODO: Uncomment
+        # try:
+        #     response = requests.post(Config.REGISTER_API_ENDPOINT, data={'user_name': username, 'password': password})
+        #     logging.debug('Registration response:')
+        #     logging.debug(response)
+        # except Exception as e:
+        #     logging.error('Calling register api error')
+        #     logging.error(e)
+        #     return render_template('register.html', error_msg=e)
+
+    return redirect(url_for('root'))
+
+
+@app.route('/change-password', methods=["POST", "GET"])
+def changePassword():
+    if request.method == "POST":
+        prev_password = request.form.get("prev_password")
+        new_password = request.form.get("new_password")
+
+        try:
+            global loggedIn_user
+            if loggedIn_user is None:
+                return render_template('login.html', error_msg='User not logged in')
+
+            loggedIn_user.change_password(prev_password, new_password)
+
+            session['success_msg'] = 'Your password has been reset successfully'
+            return redirect(url_for('root'))
+        except Exception as e:
+            error_msg = e
+            return render_template('change-password.html', error_msg=error_msg)
+    return render_template("change-password.html")
+
 
 if __name__ == '__main__':
     if Config.DEVELOPMENT == 'true':
         app.debug = True
+
+    app.secret_key = 'super secret key'
+    app.config['SESSION_TYPE'] = 'filesystem'
+
     app.run(host='127.0.0.1', port=8080)
