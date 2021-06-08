@@ -3,7 +3,7 @@ import pprint
 
 import pymongo
 from bson.objectid import ObjectId
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, flash
 from pycognito import Cognito
 import requests
 import logging
@@ -36,11 +36,7 @@ def root():
         posts.append({'message': post['message'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
                       'postedBy': post['postedBy']})
 
-    success_message = ''
-    if 'success_message' in session:
-        success_message = session['success_message']
-
-    return render_template("forum.html", posts=posts, username=loggedIn_username, success_message=success_message)
+    return render_template("forum.html", posts=posts, username=loggedIn_username)
 
 
 @app.route('/login', methods=["POST", "GET"])
@@ -206,7 +202,7 @@ def changePassword():
 
             loggedIn_user.change_password(prev_password, new_password)
 
-            session['success_msg'] = 'Your password has been reset successfully'
+            flash('Your password has been reset successfully', 'success')
             return redirect(url_for('root'))
         except Exception as e:
             error_msg = e
