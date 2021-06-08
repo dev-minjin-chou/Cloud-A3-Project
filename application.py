@@ -1,14 +1,12 @@
 import datetime
-import pprint
+import logging
 
+import boto3
 import pymongo
 from bson.objectid import ObjectId
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pycognito import Cognito
-import requests
-import logging
 
-from mail import MailSender
 from settings import Config
 
 application = app = Flask(__name__)
@@ -201,6 +199,13 @@ def changePassword():
                 return render_template('login.html', error_msg='User not logged in')
 
             loggedIn_user.change_password(prev_password, new_password)
+
+            # todo: get phone number of this user and send sms message
+            # sns = boto3.client('sns')
+            # number = '+17702233322'
+            # sns.publish(PhoneNumber=number,
+            #             Message='Did you change your password? If not, please secure your account by resetting '
+            #                     'password.')
 
             flash('Your password has been reset successfully', 'success')
             return redirect(url_for('root'))
