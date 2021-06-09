@@ -9,7 +9,7 @@ class MailSender:
     # CONFIGURATION_SET = "ConfigSet"
 
     # If necessary, replace us-west-2 with the AWS Region you're using for Amazon SES.
-    AWS_REGION = "ap-southeast-1"
+    AWS_REGION = "us-east-1"
 
     # The email body for recipients with non-HTML email clients.
     BODY_TEXT = ("Amazon SES Test (Python)\r\n"
