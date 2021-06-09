@@ -4,9 +4,15 @@ import logging
 import boto3
 import pymongo
 from bson.objectid import ObjectId
-from flask import Flask, render_template, request, redirect, url_for, flash
+import datetime
+import requests
+import pymongo
+import boto3
+import json
+from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
 
+from mail import MailSender
 from settings import Config
 
 application = app = Flask(__name__)
@@ -15,9 +21,12 @@ aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USE
 mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
-loggedIn_username = None
 loggedIn_user = None
+loggedIn_username = None
+loggedIn_email = None
+loggedIn_password = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
+signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
 DB_POST_COLLECTION = 'posts'
 
 
@@ -27,14 +36,8 @@ def root():
         return render_template("home.html")
 
     db = mongo_client.get_database(Config.DB_NAME)
-    db_posts = list(db.get_collection(DB_POST_COLLECTION).find())
-
-    posts = []
-    for post in db_posts:
-        posts.append({'message': post['message'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
-                      'postedBy': post['postedBy']})
-
-    return render_template("forum.html", posts=posts, username=loggedIn_username)
+    posts = list(db.get_collection(DB_POST_COLLECTION).find())
+    return render_template("forum.html", posts=posts)
 
 
 @app.route('/login', methods=["POST", "GET"])
@@ -57,6 +60,16 @@ def login():
             return render_template('login.html', error_msg=error_msg)
     else:
         return render_template('login.html')
+
+
+def query(email, dynamodb=None):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('forum-login')
+
+    response = table.query(
+        KeyConditionExpression=Key('email').eq(email),
+    )
+    return response['Items']
 
 
 @app.route('/register', methods=["POST", "GET"])
@@ -170,49 +183,17 @@ def verifyEmail():
             global loggedIn_username
             loggedIn_username = username
         except Exception as e:
+            return render_template('email-verification.html', error_msg=e)
+
+        try:
+            requests.post(signupAPI, json={"email": loggedIn_email, "user_name": loggedIn_username,
+                                           "password": loggedIn_password})
+        except Exception as e:
             logging.error('Email verification error')
             logging.error(e)
             return render_template('email-verification.html', error_msg=e)
 
-        # TODO: Uncomment
-        # try:
-        #     response = requests.post(Config.REGISTER_API_ENDPOINT, data={'user_name': username, 'password': password})
-        #     logging.debug('Registration response:')
-        #     logging.debug(response)
-        # except Exception as e:
-        #     logging.error('Calling register api error')
-        #     logging.error(e)
-        #     return render_template('register.html', error_msg=e)
-
-    return redirect(url_for('root'))
-
-
-@app.route('/change-password', methods=["POST", "GET"])
-def changePassword():
-    if request.method == "POST":
-        prev_password = request.form.get("prev_password")
-        new_password = request.form.get("new_password")
-
-        try:
-            global loggedIn_user
-            if loggedIn_user is None:
-                return render_template('login.html', error_msg='User not logged in')
-
-            loggedIn_user.change_password(prev_password, new_password)
-
-            # todo: get phone number of this user and send sms message
-            # sns = boto3.client('sns')
-            # number = '+17702233322'
-            # sns.publish(PhoneNumber=number,
-            #             Message='Did you change your password? If not, please secure your account by resetting '
-            #                     'password.')
-
-            flash('Your password has been reset successfully', 'success')
-            return redirect(url_for('root'))
-        except Exception as e:
-            error_msg = e
-            return render_template('change-password.html', error_msg=error_msg)
-    return render_template("change-password.html")
+        return redirect(url_for('root'))
 
 
 if __name__ == '__main__':
