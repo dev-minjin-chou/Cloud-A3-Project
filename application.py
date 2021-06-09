@@ -1,12 +1,19 @@
 import datetime
-
 import pymongo
 from bson.objectid import ObjectId
+import datetime
+import uuid
+import requests
+import pymongo
+import boto3
+import json
 from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
 
 from mail import MailSender
+from boto3.dynamodb.conditions import Key, Attr
 from settings import Config
+from mail import MailSender
 
 application = app = Flask(__name__)
 
@@ -14,9 +21,12 @@ aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USE
 mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
-loggedIn_username = None
 loggedIn_user = None
+loggedIn_username = None
+loggedIn_email = None
+loggedIn_password = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
+signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
 DB_POST_COLLECTION = 'posts'
 
 
@@ -50,6 +60,16 @@ def login():
             return render_template('login.html', error_msg=error_msg)
     else:
         return render_template('login.html')
+
+
+def query(email, dynamodb=None):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('forum-login')
+
+    response = table.query(
+        KeyConditionExpression=Key('email').eq(email),
+    )
+    return response['Items']
 
 
 @app.route('/register', methods=["POST", "GET"])
@@ -147,6 +167,70 @@ def likePost():
     #     return render_template('post.html', error_msg=e)
 
 
+@app.route('/create-post', methods=["POST"])
+def createPost():
+    subject = request.form.get("subject")
+    message = request.form.get("message")
+
+    try:
+        db = mongo_client.get_database(Config.DB_NAME)
+        users = db.get_collection('users')
+        user = users.find_one({'username': loggedIn_username})
+        post = {'id': str(uuid.uuid4()), 'subject': subject, 'message': message, 'postedAt': datetime.datetime.now()}
+
+        if user is None:
+            users.insert_one({'username': loggedIn_username, 'posts': [post]})
+        else:
+            update_document = {
+                '$push': {"posts": post}
+            }
+            users.update_one({'username': loggedIn_username}, update_document)
+
+        return redirect(url_for('root'))
+    except Exception as e:
+        return render_template('forum.html', error_msg=e)
+
+
+@app.route('/users/<string:username>/posts/<string:post_id>', methods=["GET"])
+def viewPost(username, post_id):
+    if request.method == "POST":
+        return redirect(url_for('root'))
+
+    try:
+        db = mongo_client.get_database(Config.DB_NAME)
+        results = db.get_collection('users').find_one({'username': username},
+                                                      {'posts': {
+                                                          "$elemMatch": {
+                                                              "id": post_id
+                                                          }
+                                                      }})
+        post = results['posts'][0]
+        post['postedBy'] = username
+        return render_template('post.html', post=post)
+    except Exception as e:
+        return render_template('post.html', error_msg=e)
+
+
+@app.route('/post', methods=["POST"])
+def likePost():
+    try:
+        posted_by = request.form.get("postedBy")
+        db = mongo_client.get_database(Config.DB_NAME)
+        user = db.get_collection('users').find_one({'username': posted_by})
+
+        if 'email' not in user:
+            err_msg = 'This user has not been verified with email'
+            print(err_msg)
+            return render_template('post.html', error_msg=err_msg)
+
+        email = user['email']
+        mailSender = MailSender(Config.SENDER_EMAIL)
+        # mailSender.sendMail(f'{loggedIn_username} just liked your post', email)
+        return redirect(url_for('root'))
+    except Exception as e:
+        return render_template('post.html', error_msg=e)
+
+
 @app.route('/email-verification', methods=["POST"])
 def verifyEmail():
     if request.method == "POST":
@@ -155,13 +239,18 @@ def verifyEmail():
 
         try:
             aws_cognito.confirm_sign_up(ver_code, username)
-
             global loggedIn_username
             loggedIn_username = username
-
-            return redirect(url_for('root'))
         except Exception as e:
             return render_template('email-verification.html', error_msg=e)
+
+        try:
+            requests.post(signupAPI, json={"email": loggedIn_email, "user_name": loggedIn_username,
+                                           "password": loggedIn_password})
+        except Exception as e:
+            return render_template('email-verification.html', error_msg=e)
+
+        return redirect(url_for('root'))
 
 
 if __name__ == '__main__':
