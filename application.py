@@ -8,8 +8,9 @@ from bson.objectid import ObjectId
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pycognito import Cognito
 
-# from mail import MailSender
+from mail import MailSender
 from settings import Config
+import jwt
 
 application = app = Flask(__name__)
 
@@ -19,8 +20,6 @@ mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
 
 loggedIn_user = None
 loggedIn_username = None
-loggedIn_email = None
-loggedIn_password = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
 DB_POST_COLLECTION = 'posts'
@@ -36,8 +35,9 @@ def root():
 
     posts = []
     for post in db_posts:
-        posts.append({'message': post['message'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
-                      'postedBy': post['postedBy']})
+        posts.append(
+            {'_id': post['_id'], 'message': post['message'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
+             'postedBy': post['postedBy']})
 
     return render_template("forum.html", posts=posts, username=loggedIn_username)
 
@@ -80,10 +80,6 @@ def register():
         user_email = request.form.get("email")
         username = request.form.get("username")
         password = request.form.get("password")
-
-        global loggedIn_email, loggedIn_password
-        loggedIn_email = user_email
-        loggedIn_password = password
 
         try:
             aws_cognito.set_base_attributes(email=user_email)
@@ -148,25 +144,37 @@ def viewPost(username, post_id):
 
 @app.route('/post', methods=["POST"])
 def likePost():
-    return redirect(url_for('root'))
+    try:
+        if loggedIn_user is None:
+            flash('Missing user credential, please login again', 'error')
+            return redirect(url_for('root'))
 
-    # TODO: Get user email
-    # try:
-    #     posted_by = request.form.get("postedBy")
-    #     db = mongo_client.get_database(Config.DB_NAME)
-    #     user = db.get_collection('users').find_one({'username': posted_by})
-    #
-    #     if 'email' not in user:
-    #         err_msg = 'This user has not been verified with email'
-    #         print(err_msg)
-    #         return render_template('post.html', error_msg=err_msg)
-    #
-    #     destination_email = user['email']
-    #     mailSender = MailSender(Config.SENDER_EMAIL)
-    #     mailSender.sendMail(f'{loggedIn_username} just liked your post', destination_email)
-    #     return redirect(url_for('root'))
-    # except Exception as e:
-    #     return render_template('post.html', error_msg=e)
+        access_token = loggedIn_user.id_token
+        app.logger.debug(f'Decoding token {access_token}')
+        decoded = jwt.decode(access_token, algorithms=["RS256"], options={"verify_signature": False})
+        email = decoded['email']
+        app.logger.debug(f'Got email {email}')
+    except Exception as e:
+        app.logger.error('Decoding error')
+        app.logger.error(e)
+
+        flash(str(e), 'danger')
+        return redirect(url_for('root'))
+
+    try:
+        posted_by = request.form.get("postedBy")
+        mailSender = MailSender(Config.SENDER_EMAIL)
+
+        mail_subject = f'{posted_by} just liked your post'
+        app.logger.debug(f'Sending mail with subject {mail_subject}')
+
+        mailSender.sendMail(mail_subject, email)
+    except Exception as e:
+        app.logger.error('Sending email error')
+        app.logger.error(e)
+        flash(str(e), 'danger')
+
+    return redirect(url_for('root'))
 
 
 @app.route('/email-verification', methods=["POST"])
@@ -185,16 +193,16 @@ def verifyEmail():
             app.logger.error(e)
             return render_template('email-verification.html', error_msg=e)
 
-        try:
-            payload = {"email": loggedIn_email, "user_name": username,
-                       "password": loggedIn_password}
-            app.logger.debug('Sending signup api request with payload')
-            app.logger.debug(payload)
-            requests.post(signupAPI, json=payload)
-        except Exception as e:
-            app.logger.error('Sending signup api error')
-            app.logger.error(e)
-            return render_template('email-verification.html', error_msg=e)
+        # try:
+        #     payload = {"email": loggedIn_email, "user_name": username,
+        #                "password": loggedIn_password}
+        #     app.logger.debug('Sending signup api request with payload')
+        #     app.logger.debug(payload)
+        #     requests.post(signupAPI, json=payload)
+        # except Exception as e:
+        #     app.logger.error('Sending signup api error')
+        #     app.logger.error(e)
+        #     return render_template('email-verification.html', error_msg=e)
 
         flash('You have successfully registered.', 'success')
         return redirect(url_for('root'))
