@@ -1,7 +1,9 @@
 import datetime
 import uuid
-
+import requests
 import pymongo
+import boto3
+import json
 from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
 from boto3.dynamodb.conditions import Key, Attr
@@ -10,11 +12,13 @@ from mail import MailSender
 
 application = app = Flask(__name__)
 
-# aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USER_POOL_NAME)
+aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USER_POOL_NAME)
 mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
 loggedIn_username = None
+loggedIn_email = None
+loggedIn_password = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
 
@@ -35,7 +39,7 @@ def root():
                 {'post_id': post['id'], 'subject': post['subject'],
                  'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
                  'username': u['username']})
-    return render_template("forum.html", posts=posts)
+    return render_template("home.html")
 
 
 @app.route('/login', methods=["POST", "GET"])
@@ -76,28 +80,16 @@ def register():
         user_name = request.form.get("username")
         password = request.form.get("password")
 
-        json_data = {   'email': email,
-                        'user_name': user_name,
-                        'password': password }
+        global loggedIn_email
+        global loggedIn_password 
+        loggedIn_email = email
+        loggedIn_password = password
 
         try:
             aws_cognito.set_base_attributes(email=email)
             response = aws_cognito.register(user_name, password)
             print('Register response')
             print(response)
-        except Exception as e:
-            return render_template('register.html', error_msg=e)
-
-        try:
-            existing_user = query(email)
-            if len(existing_user) > 0:
-                if email == existing_user[0]['email']:
-                    error_msg = 'The email already exists.'
-                    return render_template('register.html', error_msg=error_msg)
-            else:
-                return render_template('email-verification.html', email=email)
-            #db = mongo_client.get_database(Config.DB_NAME)
-            #db.get_collection('users').insert_one({'username': username, 'email': user_email})
         except Exception as e:
             return render_template('register.html', error_msg=e)
 
@@ -175,13 +167,14 @@ def verifyEmail():
     if request.method == "POST":
         username = request.form.get("username")
         ver_code = request.form.get("ver_code")
-
+        
+        
         try:
             aws_cognito.confirm_sign_up(ver_code, username)
-
             global loggedIn_username
             loggedIn_username = username
-
+            
+            r = requests.post(signupAPI, json={"email": loggedIn_email, "user_name": loggedIn_username, "password": loggedIn_password})
             return redirect(url_for('root'))
         except Exception as e:
             return render_template('email-verification.html', error_msg=e)
