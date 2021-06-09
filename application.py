@@ -3,16 +3,13 @@ import logging
 
 import boto3
 import pymongo
-from bson.objectid import ObjectId
-import datetime
 import requests
-import pymongo
-import boto3
-import json
+from boto3.dynamodb.conditions import Key
+from bson.objectid import ObjectId
 from flask import Flask, render_template, request, redirect, url_for
 from pycognito import Cognito
 
-from mail import MailSender
+# from mail import MailSender
 from settings import Config
 
 application = app = Flask(__name__)
