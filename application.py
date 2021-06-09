@@ -20,8 +20,6 @@ mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
 
 loggedIn_user = None
 loggedIn_username = None
-loggedIn_email = None
-loggedIn_password = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
 DB_POST_COLLECTION = 'posts'
@@ -82,10 +80,6 @@ def register():
         user_email = request.form.get("email")
         username = request.form.get("username")
         password = request.form.get("password")
-
-        global loggedIn_email, loggedIn_password
-        loggedIn_email = user_email
-        loggedIn_password = password
 
         try:
             aws_cognito.set_base_attributes(email=user_email)
@@ -176,6 +170,8 @@ def likePost():
 
         mailSender.sendMail(mail_subject, email)
     except Exception as e:
+        app.logger.error('Sending email error')
+        app.logger.error(e)
         flash(str(e), 'danger')
 
     return redirect(url_for('root'))
@@ -197,16 +193,16 @@ def verifyEmail():
             app.logger.error(e)
             return render_template('email-verification.html', error_msg=e)
 
-        try:
-            payload = {"email": loggedIn_email, "user_name": username,
-                       "password": loggedIn_password}
-            app.logger.debug('Sending signup api request with payload')
-            app.logger.debug(payload)
-            requests.post(signupAPI, json=payload)
-        except Exception as e:
-            app.logger.error('Sending signup api error')
-            app.logger.error(e)
-            return render_template('email-verification.html', error_msg=e)
+        # try:
+        #     payload = {"email": loggedIn_email, "user_name": username,
+        #                "password": loggedIn_password}
+        #     app.logger.debug('Sending signup api request with payload')
+        #     app.logger.debug(payload)
+        #     requests.post(signupAPI, json=payload)
+        # except Exception as e:
+        #     app.logger.error('Sending signup api error')
+        #     app.logger.error(e)
+        #     return render_template('email-verification.html', error_msg=e)
 
         flash('You have successfully registered.', 'success')
         return redirect(url_for('root'))
