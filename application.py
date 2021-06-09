@@ -59,7 +59,7 @@ def login():
         return render_template('login.html')
 
 
-def query(email, dynamodb=None):
+def query(email):
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table('forum-login')
 
