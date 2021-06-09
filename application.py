@@ -29,6 +29,7 @@ DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
 DB_POST_COLLECTION = 'posts'
 
+
 @app.route("/")
 def root():
     if loggedIn_username is None:
@@ -236,16 +237,20 @@ def verifyEmail():
         username = request.form.get("username")
         ver_code = request.form.get("ver_code")
 
-
         try:
             aws_cognito.confirm_sign_up(ver_code, username)
             global loggedIn_username
             loggedIn_username = username
-
-            r = requests.post(signupAPI, json={"email": loggedIn_email, "user_name": loggedIn_username, "password": loggedIn_password})
-            return redirect(url_for('root'))
         except Exception as e:
             return render_template('email-verification.html', error_msg=e)
+
+        try:
+            requests.post(signupAPI, json={"email": loggedIn_email, "user_name": loggedIn_username,
+                                           "password": loggedIn_password})
+        except Exception as e:
+            return render_template('email-verification.html', error_msg=e)
+
+        return redirect(url_for('root'))
 
 
 if __name__ == '__main__':
