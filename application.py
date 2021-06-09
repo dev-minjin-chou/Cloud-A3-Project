@@ -1,5 +1,4 @@
 import datetime
-import logging
 
 import boto3
 import pymongo
@@ -82,22 +81,18 @@ def register():
         username = request.form.get("username")
         password = request.form.get("password")
 
+        global loggedIn_email, loggedIn_password
+        loggedIn_email = user_email
+        loggedIn_password = password
+
         try:
             aws_cognito.set_base_attributes(email=user_email)
             cognito_response = aws_cognito.register(username, password)
-            logging.debug('Cognito response:')
-            logging.debug(cognito_response)
+            app.logger.debug('Cognito response:')
+            app.logger.debug(cognito_response)
         except Exception as e:
-            logging.error('AWS Cognito API error')
-            logging.error(e)
-            return render_template('register.html', error_msg=e)
-
-        try:
-            db = mongo_client.get_database(Config.DB_NAME)
-            db.get_collection('users').insert_one({'username': username, 'email': user_email})
-        except Exception as e:
-            logging.error('Insert user into database error')
-            logging.error(e)
+            app.logger.error('AWS Cognito API error')
+            app.logger.error(e)
             return render_template('register.html', error_msg=e)
 
         return render_template('email-verification.html', email=user_email, username=username)
@@ -186,18 +181,22 @@ def verifyEmail():
             global loggedIn_username
             loggedIn_username = username
         except Exception as e:
-            logging.error('Email verification error')
-            logging.error(e)
+            app.logger.error('Email verification error')
+            app.logger.error(e)
             return render_template('email-verification.html', error_msg=e)
 
         try:
-            requests.post(signupAPI, json={"email": loggedIn_email, "user_name": loggedIn_username,
-                                           "password": loggedIn_password})
+            payload = {"email": loggedIn_email, "user_name": username,
+                       "password": loggedIn_password}
+            app.logger.debug('Sending signup api request with payload')
+            app.logger.debug(payload)
+            requests.post(signupAPI, json=payload)
         except Exception as e:
-            logging.error('Sending signup api error')
-            logging.error(e)
+            app.logger.error('Sending signup api error')
+            app.logger.error(e)
             return render_template('email-verification.html', error_msg=e)
 
+        flash('You have successfully registered.', 'success')
         return redirect(url_for('root'))
 
 
