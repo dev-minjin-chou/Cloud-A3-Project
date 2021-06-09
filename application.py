@@ -84,7 +84,7 @@ def register():
             logging.error(e)
             return render_template('register.html', error_msg=e)
 
-        return render_template('email-verification.html', email=user_email)
+        return render_template('email-verification.html', email=user_email, username=username)
     else:
         return render_template('register.html')
 
