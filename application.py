@@ -6,7 +6,7 @@ import pymongo
 import requests
 from boto3.dynamodb.conditions import Key
 from bson.objectid import ObjectId
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from pycognito import Cognito
 
 # from mail import MailSender
@@ -33,8 +33,14 @@ def root():
         return render_template("home.html")
 
     db = mongo_client.get_database(Config.DB_NAME)
-    posts = list(db.get_collection(DB_POST_COLLECTION).find())
-    return render_template("forum.html", posts=posts)
+    db_posts = list(db.get_collection(DB_POST_COLLECTION).find())
+
+    posts = []
+    for post in db_posts:
+        posts.append({'message': post['message'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
+                      'postedBy': post['postedBy']})
+
+    return render_template("forum.html", posts=posts, username=loggedIn_username)
 
 
 @app.route('/login', methods=["POST", "GET"])
@@ -180,17 +186,47 @@ def verifyEmail():
             global loggedIn_username
             loggedIn_username = username
         except Exception as e:
+            logging.error('Email verification error')
+            logging.error(e)
             return render_template('email-verification.html', error_msg=e)
 
         try:
             requests.post(signupAPI, json={"email": loggedIn_email, "user_name": loggedIn_username,
                                            "password": loggedIn_password})
         except Exception as e:
-            logging.error('Email verification error')
+            logging.error('Sending signup api error')
             logging.error(e)
             return render_template('email-verification.html', error_msg=e)
 
         return redirect(url_for('root'))
+
+
+@app.route('/change-password', methods=["POST", "GET"])
+def changePassword():
+    if request.method == "POST":
+        prev_password = request.form.get("prev_password")
+        new_password = request.form.get("new_password")
+
+        try:
+            global loggedIn_user
+            if loggedIn_user is None:
+                return render_template('login.html', error_msg='User not logged in')
+
+            loggedIn_user.change_password(prev_password, new_password)
+
+            # todo: get phone number of this user and send sms message
+            # sns = boto3.client('sns')
+            # number = '+17702233322'
+            # sns.publish(PhoneNumber=number,
+            #             Message='Did you change your password? If not, please secure your account by resetting '
+            #                     'password.')
+
+            flash('Your password has been reset successfully', 'success')
+            return redirect(url_for('root'))
+        except Exception as e:
+            error_msg = e
+            return render_template('change-password.html', error_msg=error_msg)
+    return render_template("change-password.html")
 
 
 if __name__ == '__main__':
