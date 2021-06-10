@@ -11,6 +11,7 @@ from pycognito import Cognito
 from mail import MailSender
 from settings import Config
 import jwt
+import uuid
 
 application = app = Flask(__name__)
 
@@ -107,7 +108,8 @@ def createPost():
     message = request.form.get("message")
 
     try:
-        payload = {'message': message, "username": loggedIn_username, 'timestamp': datetime.datetime.now().isoformat()}
+        payload = {'id': str(uuid.uuid4()), 'message': message, "username": loggedIn_username,
+                   'timestamp': datetime.datetime.now().isoformat()}
         app.logger.debug('Sending create post api request with payload')
         app.logger.debug(payload)
         requests.post(Config.CREATE_POST_API, json=payload)

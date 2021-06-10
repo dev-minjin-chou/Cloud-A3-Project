@@ -6,9 +6,12 @@ const dynamodb = new AWS.DynamoDB({
 
 exports.handler = (event, context, callback) => {
     const body = JSON.parse(event.body);
-    const {message, username, timestamp} = body
+    const {id, message, username, timestamp} = body
     const params = {
         Item: {
+            id: {
+                S: id
+            },
             message: {
                 S: message
             },
@@ -35,6 +38,7 @@ exports.handler = (event, context, callback) => {
                     "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
                 },
                 body: JSON.stringify({
+                    id,
                     message,
                     username,
                     timestamp
