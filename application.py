@@ -63,16 +63,6 @@ def login():
         return render_template('login.html')
 
 
-def query(email):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table('forum-login')
-
-    response = table.query(
-        KeyConditionExpression=Key('email').eq(email),
-    )
-    return response['Items']
-
-
 @app.route('/register', methods=["POST", "GET"])
 def register():
     if request.method == "POST":
