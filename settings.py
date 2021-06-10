@@ -8,7 +8,7 @@ class Config:
     ENV = "development"
     DEVELOPMENT = os.environ.get("DEBUG")
 
-    REGISTER_API_ENDPOINT = os.environ.get("REGISTER_API_ENDPOINT")
+    CREATE_POST_API = os.environ.get("CREATE_POST_API")
 
     USER_POOL_ID = os.environ.get("USER_POOL_ID")
     CLIENT_ID = os.environ.get("CLIENT_ID")

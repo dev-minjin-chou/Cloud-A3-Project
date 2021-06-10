@@ -21,7 +21,6 @@ mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
 loggedIn_user = None
 loggedIn_username = None
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
-signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
 DB_POST_COLLECTION = 'posts'
 
 
@@ -118,14 +117,16 @@ def createPost():
     message = request.form.get("message")
 
     try:
-        db = mongo_client.get_database(Config.DB_NAME)
-        posts = db.get_collection(DB_POST_COLLECTION)
-        post = {'message': message, 'postedAt': datetime.datetime.now(), 'postedBy': loggedIn_username}
-        posts.insert_one(post)
-
-        return redirect(url_for('root'))
+        payload = {'message': message, "username": loggedIn_username, 'timestamp': datetime.datetime.now().isoformat()}
+        app.logger.debug('Sending create post api request with payload')
+        app.logger.debug(payload)
+        requests.post(Config.CREATE_POST_API, json=payload)
     except Exception as e:
+        app.logger.error('Sending create post api error')
+        app.logger.error(e)
         return render_template('forum.html', error_msg=e)
+
+    return redirect(url_for('root'))
 
 
 @app.route('/users/<string:username>/posts/<string:post_id>', methods=["GET"])
@@ -192,17 +193,6 @@ def verifyEmail():
             app.logger.error('Email verification error')
             app.logger.error(e)
             return render_template('email-verification.html', error_msg=e)
-
-        # try:
-        #     payload = {"email": loggedIn_email, "user_name": username,
-        #                "password": loggedIn_password}
-        #     app.logger.debug('Sending signup api request with payload')
-        #     app.logger.debug(payload)
-        #     requests.post(signupAPI, json=payload)
-        # except Exception as e:
-        #     app.logger.error('Sending signup api error')
-        #     app.logger.error(e)
-        #     return render_template('email-verification.html', error_msg=e)
 
         flash('You have successfully registered.', 'success')
         return redirect(url_for('root'))
