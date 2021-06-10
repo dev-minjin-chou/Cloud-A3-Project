@@ -3,6 +3,7 @@ const dynamodb = new AWS.DynamoDB({
     region: "us-east-1",
     apiVersion: "2012-08-10"
 });
+const TABLE_NAME="forum-post"
 
 exports.handler = (event, context, callback) => {
     const body = JSON.parse(event.body);
@@ -22,7 +23,7 @@ exports.handler = (event, context, callback) => {
                 S: timestamp
             }
         },
-        TableName: "forum-post"
+        TableName: TABLE_NAME
     };
     console.log(params);
     dynamodb.putItem(params, (err, data) => {
