@@ -22,6 +22,7 @@ mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
 
 loggedIn_user = None
 loggedIn_username = None
+DYNAMODB_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 DB_POST_COLLECTION = 'posts'
 
@@ -39,7 +40,7 @@ def root():
         for post in post_response:
             posts.append(
                 {'_id': post['id'], 'message': post['message'],
-                 'postedAt': datetime.strptime(post['timestamp'], "%Y-%m-%dT%H:%M:%SZ").strftime(DATE_TIME_FORMAT),
+                 'postedAt': datetime.strptime(post['timestamp'], DYNAMODB_TIMESTAMP_FORMAT).strftime(DATE_TIME_FORMAT),
                  'postedBy': post['username']})
         return render_template("forum.html", posts=posts, username=loggedIn_username)
     except Exception as e:
@@ -134,8 +135,9 @@ def viewPost(username, post_id):
         return redirect(url_for('root'))
 
     try:
-        post = requests.get(Config.POST_API + '?id=' + post_id)
+        post = json.loads(requests.get(Config.POST_API + '?id=' + post_id).content)
         post['postedBy'] = username
+        post['postedAt'] = datetime.strptime(post['timestamp'], DYNAMODB_TIMESTAMP_FORMAT).strftime(DATE_TIME_FORMAT)
         return render_template('post.html', post=post)
     except Exception as e:
         app.logger.error(f'Getting post with id = {post_id} error')
