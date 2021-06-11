@@ -1,52 +1,75 @@
+const TABLE_NAME = "forum-post";
 const AWS = require("aws-sdk");
-const dynamodb = new AWS.DynamoDB({
-    region: "us-east-1",
-    apiVersion: "2012-08-10"
-});
-const TABLE_NAME = "forum-post"
 
-exports.handler = async (event, context, callback) => {
-    let id = ''
+AWS.config.update({
+    region: "us-east-1",
+    apiVersion: "2012-08-10",
+});
+
+exports.handler = (event, context, callback) => {
+    let id = "";
     if (event.queryStringParameters && event.queryStringParameters.id) {
         console.log("Received id: " + event.queryStringParameters.id);
         id = event.queryStringParameters.id;
     }
+    const docClient = new AWS.DynamoDB.DocumentClient();
     if (!id) {
-        callback(null, {
-            statusCode: 400,
-            headers: {
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
-            },
-            body: JSON.stringify({"message": "No id specified"}),
+        const params = {
+            TableName: TABLE_NAME,
+        };
+        docClient.scan(params, (err, data) => {
+            if (err) {
+                console.error(
+                    "Unable to query. Error:",
+                    JSON.stringify(err, null, 2)
+                );
+                return callback(null, {
+                    statusCode: 400,
+                    headers: {
+                        "Access-Control-Allow-Headers": "Content-Type",
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
+                    },
+                    body: JSON.stringify(err, null, 2),
+                });
+            } else {
+                console.log("Query succeeded.");
+
+                return callback(null, {
+                    statusCode: 200,
+                    headers: {
+                        "Access-Control-Allow-Headers": "Content-Type",
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
+                    },
+                    body: JSON.stringify(data.Items),
+                });
+            }
         });
     }
 
     const params = {
         TableName: TABLE_NAME,
-        ProjectionExpression: "#postId, username, message, timestamp",
-        KeyConditionExpression: "#postId = :id",
-        ExpressionAttributeNames: {
-            "#postId": "id"
+        Key: {
+            id,
         },
-        ExpressionAttributeValues: {
-            ":id": id
-        }
     };
 
-    dynamodb.query(params, function (err, data) {
+    docClient.get(params, (err, data) => {
         if (err) {
-            console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+            console.error(
+                "Unable to query. Error:",
+                JSON.stringify(err, null, 2)
+            );
             callback(null, {
                 statusCode: 400,
                 headers: {
                     "Access-Control-Allow-Headers": "Content-Type",
                     "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
                 },
                 body: JSON.stringify(err, null, 2),
-            })
+            });
         } else {
             console.log("Query succeeded.");
 
@@ -55,10 +78,10 @@ exports.handler = async (event, context, callback) => {
                 headers: {
                     "Access-Control-Allow-Headers": "Content-Type",
                     "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+                    "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
                 },
-                body: JSON.stringify({id}),
-            },);
+                body: JSON.stringify(data.Item),
+            });
         }
     });
 };
