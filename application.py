@@ -1,8 +1,9 @@
-import datetime
+from datetime import datetime
 
 import boto3
 import pymongo
 import requests
+import json
 from boto3.dynamodb.conditions import Key
 from bson.objectid import ObjectId
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -30,16 +31,22 @@ def root():
     if loggedIn_username is None:
         return render_template("home.html")
 
-    db = mongo_client.get_database(Config.DB_NAME)
-    db_posts = list(db.get_collection(DB_POST_COLLECTION).find())
+    try:
+        post_response = json.loads(requests.get(Config.POST_API).content)
+        app.logger.debug('Posts = ', post_response)
 
-    posts = []
-    for post in db_posts:
-        posts.append(
-            {'_id': post['_id'], 'message': post['message'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
-             'postedBy': post['postedBy']})
-
-    return render_template("forum.html", posts=posts, username=loggedIn_username)
+        posts = []
+        for post in post_response:
+            posts.append(
+                {'_id': post['id'], 'message': post['message'],
+                 'postedAt': datetime.strptime(post['timestamp'], "%Y-%m-%dT%H:%M:%SZ").strftime(DATE_TIME_FORMAT),
+                 'postedBy': post['username']})
+        return render_template("forum.html", posts=posts, username=loggedIn_username)
+    except Exception as e:
+        app.logger.error(f'Getting posts error')
+        app.logger.error(e)
+        flash(f'Getting posts error: {e}', 'danger')
+        return render_template('forum.html')
 
 
 @app.route('/login', methods=["POST", "GET"])
@@ -109,10 +116,10 @@ def createPost():
 
     try:
         payload = {'id': str(uuid.uuid4()), 'message': message, "username": loggedIn_username,
-                   'timestamp': datetime.datetime.now().isoformat()}
+                   'timestamp': datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")}
         app.logger.debug('Sending create post api request with payload')
         app.logger.debug(payload)
-        requests.post(Config.CREATE_POST_API, json=payload)
+        requests.post(Config.POST_API, json=payload)
     except Exception as e:
         app.logger.error('Sending create post api error')
         app.logger.error(e)
@@ -127,19 +134,20 @@ def viewPost(username, post_id):
         return redirect(url_for('root'))
 
     try:
-        db = mongo_client.get_database(Config.DB_NAME)
-        post = db.get_collection(DB_POST_COLLECTION).find_one({'_id': ObjectId(post_id)})
+        post = requests.get(Config.POST_API + '?id=' + post_id)
         post['postedBy'] = username
         return render_template('post.html', post=post)
     except Exception as e:
-        return render_template('post.html', error_msg=e)
+        app.logger.error(f'Getting post with id = {post_id} error')
+        app.logger.error(e)
+        return render_template('forum.html', error_msg=e)
 
 
 @app.route('/post', methods=["POST"])
 def likePost():
     try:
         if loggedIn_user is None:
-            flash('Missing user credential, please login again', 'error')
+            flash('Missing user credential, please login again', 'danger')
             return redirect(url_for('root'))
 
         access_token = loggedIn_user.id_token
