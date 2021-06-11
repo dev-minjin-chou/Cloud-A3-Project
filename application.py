@@ -21,14 +21,13 @@ mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
 
 # AWS S3
 s3 = boto3.client('s3')
-helper = Helper(s3, app.logger)
+helper = Helper(app.logger, s3, mongo_client)
 
 loggedIn_user = None
 loggedIn_username = None
+
 DYNAMODB_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
-DB_POST_COLLECTION = 'posts'
-
 
 
 @app.route("/")
@@ -119,9 +118,10 @@ def logout():
 def createPost():
     message = request.form.get("message")
     file = request.files['file']
+    post_id = str(uuid.uuid4())
 
     try:
-        payload = {'id': str(uuid.uuid4()), 'message': message, "username": loggedIn_username,
+        payload = {'id': post_id, 'message': message, "username": loggedIn_username,
                    'timestamp': datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")}
         app.logger.debug('Sending create post api request with payload')
         app.logger.debug(payload)
@@ -134,7 +134,8 @@ def createPost():
     # If file is chosen, upload to S3
     if file.filename != '':
         try:
-            helper.upload_file(file)
+            object_name = helper.upload_file(file)
+            helper.insert_image_url(post_id, object_name)
         except Exception as e:
             app.logger.error('Upload post image error')
             app.logger.error(e)
