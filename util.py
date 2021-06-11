@@ -1,11 +1,12 @@
 import uuid
-
+import pymongo
+import boto3
 import requests
 from botocore.exceptions import ClientError
 
 from settings import Config
 
-REGION_NAME = "ap-southeast-1"
+REGION_NAME = "us-east-1"
 BUCKET_NAME = 'assignment03bucket'
 TEMP_PATH = '/tmp/'
 
@@ -22,7 +23,7 @@ def download_image(image_url, filename):
 
 
 class Helper:
-    def __init__(self, logger, s3, mongo_client):
+    def __init__(self, logger, s3=boto3.client('s3'), mongo_client=pymongo.MongoClient()):
         self.logger = logger
         self.s3 = s3
         self.mongo_client = mongo_client
@@ -52,14 +53,28 @@ class Helper:
             self.logger.error(e)
             raise e
 
-    def insert_image_url(self, post_id, objectname):
-        # Insert into db
+    def insert_image_db(self, post_id, objectname):
         try:
-            insert_data = {'id': post_id,
-                           'postImage': f'http://s3-{REGION_NAME}.amazonaws.com/{BUCKET_NAME}/{objectname}'}
+            image_url = f'https://{BUCKET_NAME}.s3.amazonaws.com/{objectname}'
+            insert_data = {'id': post_id, 'imagePost': image_url}
             db = self.mongo_client.get_database(Config.DB_NAME)
             post_col = db.get_collection(DB_POST_COLLECTION)
             post_col.insert_one(insert_data)
+        except Exception as e:
+            self.logger.error(e)
+            raise e
+
+    def get_image_url(self, post_id):
+        try:
+            db = self.mongo_client.get_database(Config.DB_NAME)
+            post_col = db.get_collection(DB_POST_COLLECTION)
+            post = post_col.find_one({'id': post_id})
+            if post is None:
+                return ''
+
+            image_url = post['imagePost']
+            self.logger.debug('Image url = ' + post['imagePost'])
+            return image_url
         except Exception as e:
             self.logger.error(e)
             raise e

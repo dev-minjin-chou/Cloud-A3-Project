@@ -135,7 +135,7 @@ def createPost():
     if file.filename != '':
         try:
             object_name = helper.upload_file(file)
-            helper.insert_image_url(post_id, object_name)
+            helper.insert_image_db(post_id, object_name)
         except Exception as e:
             app.logger.error('Upload post image error')
             app.logger.error(e)
@@ -153,6 +153,11 @@ def viewPost(username, post_id):
         post = json.loads(requests.get(Config.POST_API + '?id=' + post_id).content)
         post['postedBy'] = username
         post['postedAt'] = datetime.strptime(post['timestamp'], DYNAMODB_TIMESTAMP_FORMAT).strftime(DATE_TIME_FORMAT)
+
+        image_url = helper.get_image_url(post_id)
+        if image_url != '':
+            post['image'] = image_url
+
         return render_template('post.html', post=post)
     except Exception as e:
         app.logger.error(f'Getting post with id = {post_id} error')
