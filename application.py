@@ -1,18 +1,17 @@
+import json
+import uuid
 from datetime import datetime
 
 import boto3
+import jwt
 import pymongo
 import requests
-import json
-from boto3.dynamodb.conditions import Key
-from bson.objectid import ObjectId
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pycognito import Cognito
 
 from mail import MailSender
 from settings import Config
-import jwt
-import uuid
+from util import Helper
 
 application = app = Flask(__name__)
 
@@ -20,11 +19,16 @@ aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USE
 mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
+# AWS S3
+s3 = boto3.client('s3')
+helper = Helper(s3, app.logger)
+
 loggedIn_user = None
 loggedIn_username = None
 DYNAMODB_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
 DB_POST_COLLECTION = 'posts'
+
 
 
 @app.route("/")
@@ -114,6 +118,7 @@ def logout():
 @app.route('/create-post', methods=["POST"])
 def createPost():
     message = request.form.get("message")
+    file = request.files['file']
 
     try:
         payload = {'id': str(uuid.uuid4()), 'message': message, "username": loggedIn_username,
@@ -125,6 +130,15 @@ def createPost():
         app.logger.error('Sending create post api error')
         app.logger.error(e)
         return render_template('forum.html', error_msg=e)
+
+    # If file is chosen, upload to S3
+    if file.filename != '':
+        try:
+            helper.upload_file(file)
+        except Exception as e:
+            app.logger.error('Upload post image error')
+            app.logger.error(e)
+            return render_template('forum.html', error_msg=e)
 
     return redirect(url_for('root'))
 
