@@ -13,15 +13,6 @@ TEMP_PATH = '/tmp/'
 DB_POST_COLLECTION = 'posts'
 
 
-def download_image(image_url, filename):
-    # get image content
-    response = requests.get(image_url)
-    # open file and write image content
-    file = open(filename, "wb")
-    file.write(response.content)
-    file.close()
-
-
 class Helper:
     def __init__(self, logger, s3=boto3.client('s3'), mongo_client=pymongo.MongoClient()):
         self.logger = logger
@@ -55,7 +46,11 @@ class Helper:
 
     def insert_image_db(self, post_id, objectname):
         try:
-            image_url = f'https://{BUCKET_NAME}.s3.amazonaws.com/{objectname}'
+            # image_url = f'https://{BUCKET_NAME}.s3.amazonaws.com/{objectname}'
+            image_url = self.s3.generate_presigned_url(
+                ClientMethod='get_object',
+                Params={'Bucket': BUCKET_NAME, 'Key': objectname},
+                ExpiresIn=3600)
             insert_data = {'id': post_id, 'imagePost': image_url}
             db = self.mongo_client.get_database(Config.DB_NAME)
             post_col = db.get_collection(DB_POST_COLLECTION)
