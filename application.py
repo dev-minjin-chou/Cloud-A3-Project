@@ -108,8 +108,10 @@ def logout():
                       id_token=id_token, refresh_token=refresh_token,
                       access_token=access_token)
     cognito.logout()
+    # Clear global variables
     global loggedIn_username
     loggedIn_username = None
+    loggedIn_user = None
 
     return redirect(url_for('root'))
 
@@ -208,16 +210,13 @@ def verifyEmail():
 
         try:
             aws_cognito.confirm_sign_up(ver_code, username)
-
-            global loggedIn_username
-            loggedIn_username = username
         except Exception as e:
             app.logger.error('Email verification error')
             app.logger.error(e)
             return render_template('email-verification.html', error_msg=e)
 
-        flash('You have successfully registered.', 'success')
-        return redirect(url_for('root'))
+        flash('You have successfully registered. Plase login.', 'success')
+        return redirect(url_for('login'))
 
 
 @app.route('/change-password', methods=["POST", "GET"])
