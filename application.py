@@ -123,7 +123,23 @@ def createPost():
     post_id = str(uuid.uuid4())
 
     try:
-        payload = {'id': post_id, 'message': message, "username": loggedIn_username,
+        if loggedIn_user is None:
+            flash('Missing user credential, please login again', 'danger')
+            return redirect(url_for('root'))
+
+        access_token = loggedIn_user.id_token
+        app.logger.debug(f'Decoding token {access_token}')
+        decoded = jwt.decode(access_token, algorithms=["RS256"], options={"verify_signature": False})
+        email = decoded['email']
+        app.logger.debug(f'Got email {email}')
+    except Exception as e:
+        app.logger.error('Decoding error')
+        app.logger.error(e)
+        flash(str(e), 'danger')
+        return redirect(url_for('root'))
+
+    try:
+        payload = {'id': post_id, 'message': message, "username": loggedIn_username, 'email': email,
                    'timestamp': datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")}
         app.logger.debug('Sending create post api request with payload')
         app.logger.debug(payload)
@@ -169,22 +185,7 @@ def viewPost(username, post_id):
 
 @app.route('/post', methods=["POST"])
 def likePost():
-    try:
-        if loggedIn_user is None:
-            flash('Missing user credential, please login again', 'danger')
-            return redirect(url_for('root'))
-
-        access_token = loggedIn_user.id_token
-        app.logger.debug(f'Decoding token {access_token}')
-        decoded = jwt.decode(access_token, algorithms=["RS256"], options={"verify_signature": False})
-        email = decoded['email']
-        app.logger.debug(f'Got email {email}')
-    except Exception as e:
-        app.logger.error('Decoding error')
-        app.logger.error(e)
-
-        flash(str(e), 'danger')
-        return redirect(url_for('root'))
+    # todo: get email author
 
     try:
         posted_by = request.form.get("postedBy")
