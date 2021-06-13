@@ -194,7 +194,7 @@ def likePost():
         app.logger.debug(f'Sending mail with subject {mail_subject}')
 
         mailSender.sendMail(mail_subject, email)
-        flash(f'Like submitted. We will let {username} know that you liked his post', 'success')
+        flash(f'Like submitted. We will let {username} know that you liked his post.', 'success')
     except Exception as e:
         app.logger.error('Sending email error')
         app.logger.error(e)
