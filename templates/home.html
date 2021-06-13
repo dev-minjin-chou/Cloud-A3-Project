@@ -5,22 +5,23 @@
 {% endblock %}
 
 {% block body %}
-    <br>
-    <h1>Welcome to Forumsbook</h1><br>
-
     {% if error_msg %}
         <div class="alert alert-danger" role="alert">
             Error: {{ error_msg }}
         </div>
     {% endif %}
 
-    <form action="{{ url_for('login') }}" method="GET">
-        <button type="submit" class="btn btn-primary">Log in</button>
-    </form>
-    <br>
-    <form action="{{ url_for('register') }}" method="GET">
-        <button type="submit" class="btn btn-primary" color="white">Sign up</button>
-    </form>
+    <div class="pt-3 d-flex flex-column justify-content-center align-items-center">
+        <h1>Welcome to Forumsbook</h1><br>
+
+        <form action="{{ url_for('login') }}" method="GET">
+            <button type="submit" class="btn btn-secondary">Log in</button>
+        </form>
+        <br>
+        <form action="{{ url_for('register') }}" method="GET">
+            <button type="submit" class="btn btn-primary" color="white">Sign up</button>
+        </form>
+    </div>
 
 {% endblock %}
 
