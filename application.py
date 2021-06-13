@@ -190,6 +190,7 @@ def viewPost(username, post_id):
 def likePost():
     try:
         email = request.form.get("email")
+        post_author = request.form.get("postedBy")
         username = loggedIn_username
         mailSender = MailSender(Config.SENDER_EMAIL)
 
@@ -197,7 +198,7 @@ def likePost():
         app.logger.debug(f'Sending mail with subject {mail_subject}')
 
         mailSender.sendMail(mail_subject, email)
-        flash(f'Like submitted. We will let {username} know that you liked his post.', 'success')
+        flash(f'Like submitted. We will let {post_author} know that you liked his post.', 'success')
     except Exception as e:
         app.logger.error('Sending email error')
         app.logger.error(e)
