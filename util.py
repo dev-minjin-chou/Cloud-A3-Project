@@ -1,12 +1,10 @@
 import uuid
 import pymongo
 import boto3
-import requests
 from botocore.exceptions import ClientError
 
 from settings import Config
 
-REGION_NAME = "us-east-1"
 BUCKET_NAME = 'assignment03bucket'
 TEMP_PATH = '/tmp/'
 

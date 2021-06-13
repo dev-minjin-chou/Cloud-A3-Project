@@ -9,7 +9,6 @@ import requests
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pycognito import Cognito
 
-
 from mail import MailSender
 from settings import Config
 from util import Helper
@@ -228,30 +227,36 @@ def verifyEmail():
 
 @app.route('/change-password', methods=["POST", "GET"])
 def changePassword():
-    if request.method == "POST":
-        prev_password = request.form.get("prev_password")
-        new_password = request.form.get("new_password")
+    if request.method != "POST":
+        return render_template("change-password.html")
 
-        try:
-            global loggedIn_user
-            if loggedIn_user is None:
-                return render_template('login.html', error_msg='User not logged in')
+    prev_password = request.form.get("prev_password")
+    new_password = request.form.get("new_password")
 
-            loggedIn_user.change_password(prev_password, new_password)
+    try:
+        global loggedIn_user
+        if loggedIn_user is None:
+            return render_template('login.html', error_msg='User not logged in')
 
-            # todo: get phone number of this user and send sms message
-            # sns = boto3.client('sns')
-            # number = '+17702233322'
-            # sns.publish(PhoneNumber=number,
-            #             Message='Did you change your password? If not, please secure your account by resetting '
-            #                     'password.')
+        loggedIn_user.change_password(prev_password, new_password)
 
-            flash('Your password has been reset successfully', 'success')
-            return redirect(url_for('root'))
-        except Exception as e:
-            error_msg = e
-            return render_template('change-password.html', error_msg=error_msg)
-    return render_template("change-password.html")
+        access_token = loggedIn_user.id_token
+        app.logger.debug(f'Decoding token {access_token}')
+        decoded = jwt.decode(access_token, algorithms=["RS256"], options={"verify_signature": False})
+        mobile = decoded['custom:mobile']
+        app.logger.debug(f'Got mobile {mobile}')
+
+        sns = boto3.client('sns', region_name=Config.REGION_NAME)
+        sns.publish(PhoneNumber=mobile,
+                    Message='Did you change your password? If not, please secure your account by resetting '
+                            'password.')
+
+        flash('Your password has been reset successfully', 'success')
+        return redirect(url_for('root'))
+    except Exception as e:
+        app.logger.error('Change password error')
+        app.logger.error(e)
+        return render_template('change-password.html', error_msg=e)
 
 
 if __name__ == '__main__':
