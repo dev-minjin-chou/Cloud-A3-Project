@@ -9,11 +9,14 @@ import requests
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pycognito import Cognito
 
+
 from mail import MailSender
 from settings import Config
 from util import Helper
 
 application = app = Flask(__name__)
+app.secret_key = 'super secret key'
+app.config['SESSION_TYPE'] = 'filesystem'
 
 aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USER_POOL_NAME)
 mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
@@ -251,8 +254,5 @@ def changePassword():
 if __name__ == '__main__':
     if Config.DEVELOPMENT == 'true':
         app.debug = True
-
-    app.secret_key = 'super secret key'
-    app.config['SESSION_TYPE'] = 'filesystem'
 
     app.run(host='127.0.0.1', port=8080)
