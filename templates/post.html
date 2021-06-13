@@ -12,6 +12,12 @@
             {% endif %}
 
             <form action="{{ url_for('likePost') }}" method="POST">
+                <input type="hidden"
+                       id="email"
+                       name="email"
+                       value="{{ post['email'] }}"
+                />
+
                 <div class="row my-3">
                     <div class="col-md-4">
                         <label for="message">Message:</label>

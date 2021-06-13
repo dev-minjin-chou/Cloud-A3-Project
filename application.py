@@ -185,13 +185,12 @@ def viewPost(username, post_id):
 
 @app.route('/post', methods=["POST"])
 def likePost():
-    # todo: get email author
-
     try:
-        posted_by = request.form.get("postedBy")
+        email = request.form.get("email")
+        username = loggedIn_username
         mailSender = MailSender(Config.SENDER_EMAIL)
 
-        mail_subject = f'{posted_by} just liked your post'
+        mail_subject = f'{username} just liked your post'
         app.logger.debug(f'Sending mail with subject {mail_subject}')
 
         mailSender.sendMail(mail_subject, email)
