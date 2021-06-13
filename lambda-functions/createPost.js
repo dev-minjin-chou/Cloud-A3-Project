@@ -3,11 +3,10 @@ const dynamodb = new AWS.DynamoDB({
     region: "us-east-1",
     apiVersion: "2012-08-10"
 });
-const TABLE_NAME="forum-post"
 
 exports.handler = (event, context, callback) => {
     const body = JSON.parse(event.body);
-    const {id, message, username, timestamp} = body
+    const {id, message, username, email, timestamp} = body
     const params = {
         Item: {
             id: {
@@ -19,11 +18,14 @@ exports.handler = (event, context, callback) => {
             username: {
                 S: username
             },
+            email: {
+                S: email
+            },
             timestamp: {
                 S: timestamp
             }
         },
-        TableName: TABLE_NAME
+        TableName: "forum-post"
     };
     console.log(params);
     dynamodb.putItem(params, (err, data) => {
@@ -42,6 +44,7 @@ exports.handler = (event, context, callback) => {
                     id,
                     message,
                     username,
+                    email,
                     timestamp
                 }),
             };
