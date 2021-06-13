@@ -84,8 +84,6 @@ def register():
         username = request.form.get("username")
         password = request.form.get("password")
         phone_number = request.form.get("phone_number")
-        if phone_number is None:
-            phone_number = ''
 
         try:
             aws_cognito.set_base_attributes(email=user_email, phone_number=phone_number)
