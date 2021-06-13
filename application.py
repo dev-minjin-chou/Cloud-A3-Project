@@ -176,7 +176,7 @@ def viewPost(username, post_id):
         if image_url != '':
             post['image'] = image_url
 
-        return render_template('post.html', post=post)
+        return render_template('post.html', post=post, username=loggedIn_username)
     except Exception as e:
         app.logger.error(f'Getting post with id = {post_id} error')
         app.logger.error(e)
@@ -194,6 +194,7 @@ def likePost():
         app.logger.debug(f'Sending mail with subject {mail_subject}')
 
         mailSender.sendMail(mail_subject, email)
+        flash(f'Like submitted. We will let {username} know that you liked his post', 'success')
     except Exception as e:
         app.logger.error('Sending email error')
         app.logger.error(e)
