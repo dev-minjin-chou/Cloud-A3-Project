@@ -1,16 +1,17 @@
-import datetime
+import json
+import uuid
+from datetime import datetime
 
 import boto3
+import jwt
 import pymongo
 import requests
-from boto3.dynamodb.conditions import Key
-from bson.objectid import ObjectId
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pycognito import Cognito
 
 from mail import MailSender
 from settings import Config
-import jwt
+from util import Helper
 
 application = app = Flask(__name__)
 
@@ -18,11 +19,15 @@ aws_cognito = Cognito(Config.USER_POOL_ID, Config.CLIENT_ID, username=Config.USE
 mongo_client = pymongo.MongoClient(Config.DB_HOST, username=Config.DB_USERNAME,
                                    password=Config.DB_PASSWORD, retryWrites='false')
 
+# AWS S3
+s3 = boto3.client('s3')
+helper = Helper(app.logger, s3, mongo_client)
+
 loggedIn_user = None
 loggedIn_username = None
+
+DYNAMODB_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DATE_TIME_FORMAT = "%Y-%m-%d, %H:%M:%S"
-signupAPI = 'https://bw55oytw64.execute-api.us-east-1.amazonaws.com/dev/createuser'
-DB_POST_COLLECTION = 'posts'
 
 
 @app.route("/")
@@ -30,16 +35,22 @@ def root():
     if loggedIn_username is None:
         return render_template("home.html")
 
-    db = mongo_client.get_database(Config.DB_NAME)
-    db_posts = list(db.get_collection(DB_POST_COLLECTION).find())
+    try:
+        post_response = json.loads(requests.get(Config.POST_API).content)
+        app.logger.debug('Posts = ', post_response)
 
-    posts = []
-    for post in db_posts:
-        posts.append(
-            {'_id': post['_id'], 'message': post['message'], 'postedAt': post['postedAt'].strftime(DATE_TIME_FORMAT),
-             'postedBy': post['postedBy']})
-
-    return render_template("forum.html", posts=posts, username=loggedIn_username)
+        posts = []
+        for post in post_response:
+            posts.append(
+                {'_id': post['id'], 'message': post['message'],
+                 'postedAt': datetime.strptime(post['timestamp'], DYNAMODB_TIMESTAMP_FORMAT).strftime(DATE_TIME_FORMAT),
+                 'postedBy': post['username']})
+        return render_template("forum.html", posts=posts, username=loggedIn_username)
+    except Exception as e:
+        app.logger.error(f'Getting posts error')
+        app.logger.error(e)
+        flash(f'Getting posts error: {e}', 'danger')
+        return render_template('forum.html')
 
 
 @app.route('/login', methods=["POST", "GET"])
@@ -62,16 +73,6 @@ def login():
             return render_template('login.html', error_msg=error_msg)
     else:
         return render_template('login.html')
-
-
-def query(email):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table('forum-login')
-
-    response = table.query(
-        KeyConditionExpression=Key('email').eq(email),
-    )
-    return response['Items']
 
 
 @app.route('/register', methods=["POST", "GET"])
@@ -116,16 +117,31 @@ def logout():
 @app.route('/create-post', methods=["POST"])
 def createPost():
     message = request.form.get("message")
+    file = request.files['file']
+    post_id = str(uuid.uuid4())
 
     try:
-        db = mongo_client.get_database(Config.DB_NAME)
-        posts = db.get_collection(DB_POST_COLLECTION)
-        post = {'message': message, 'postedAt': datetime.datetime.now(), 'postedBy': loggedIn_username}
-        posts.insert_one(post)
-
-        return redirect(url_for('root'))
+        payload = {'id': post_id, 'message': message, "username": loggedIn_username,
+                   'timestamp': datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")}
+        app.logger.debug('Sending create post api request with payload')
+        app.logger.debug(payload)
+        requests.post(Config.POST_API, json=payload)
     except Exception as e:
+        app.logger.error('Sending create post api error')
+        app.logger.error(e)
         return render_template('forum.html', error_msg=e)
+
+    # If file is chosen, upload to S3
+    if file.filename != '':
+        try:
+            object_name = helper.upload_file(file)
+            helper.insert_image_db(post_id, object_name)
+        except Exception as e:
+            app.logger.error('Upload post image error')
+            app.logger.error(e)
+            return render_template('forum.html', error_msg=e)
+
+    return redirect(url_for('root'))
 
 
 @app.route('/users/<string:username>/posts/<string:post_id>', methods=["GET"])
@@ -134,19 +150,26 @@ def viewPost(username, post_id):
         return redirect(url_for('root'))
 
     try:
-        db = mongo_client.get_database(Config.DB_NAME)
-        post = db.get_collection(DB_POST_COLLECTION).find_one({'_id': ObjectId(post_id)})
+        post = json.loads(requests.get(Config.POST_API + '?id=' + post_id).content)
         post['postedBy'] = username
+        post['postedAt'] = datetime.strptime(post['timestamp'], DYNAMODB_TIMESTAMP_FORMAT).strftime(DATE_TIME_FORMAT)
+
+        image_url = helper.get_image_url(post_id)
+        if image_url != '':
+            post['image'] = image_url
+
         return render_template('post.html', post=post)
     except Exception as e:
-        return render_template('post.html', error_msg=e)
+        app.logger.error(f'Getting post with id = {post_id} error')
+        app.logger.error(e)
+        return render_template('forum.html', error_msg=e)
 
 
 @app.route('/post', methods=["POST"])
 def likePost():
     try:
         if loggedIn_user is None:
-            flash('Missing user credential, please login again', 'error')
+            flash('Missing user credential, please login again', 'danger')
             return redirect(url_for('root'))
 
         access_token = loggedIn_user.id_token
@@ -192,17 +215,6 @@ def verifyEmail():
             app.logger.error('Email verification error')
             app.logger.error(e)
             return render_template('email-verification.html', error_msg=e)
-
-        # try:
-        #     payload = {"email": loggedIn_email, "user_name": username,
-        #                "password": loggedIn_password}
-        #     app.logger.debug('Sending signup api request with payload')
-        #     app.logger.debug(payload)
-        #     requests.post(signupAPI, json=payload)
-        # except Exception as e:
-        #     app.logger.error('Sending signup api error')
-        #     app.logger.error(e)
-        #     return render_template('email-verification.html', error_msg=e)
 
         flash('You have successfully registered.', 'success')
         return redirect(url_for('root'))

@@ -15,7 +15,7 @@
     {% endif %}
 
     <div class="container">
-        <form action="{{ url_for('createPost') }}" method="POST">
+        <form action="{{ url_for('createPost') }}" method="POST" enctype="multipart/form-data">
             <div class="row my-3">
                 <div class="col-md-4">
                     <label for="message">Message:</label>
@@ -27,6 +27,7 @@
                             class="form-control"
                             name="message"
                     />
+                    <input type="file" name="file" />
                 </div>
             </div>
 
