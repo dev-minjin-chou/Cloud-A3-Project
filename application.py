@@ -83,11 +83,11 @@ def register():
         user_email = request.form.get("email")
         username = request.form.get("username")
         password = request.form.get("password")
-        mobile = request.form.get("mobile")
+        phone_number = request.form.get("phone_number")
 
         try:
-            aws_cognito.set_base_attributes(email=user_email)
-            aws_cognito.add_custom_attributes(mobile=mobile)
+            aws_cognito.set_base_attributes(email=user_email, phone_number=phone_number)
+            # aws_cognito.add_custom_attributes(mobile=mobile)
             cognito_response = aws_cognito.register(username, password)
             app.logger.debug('Cognito response:')
             app.logger.debug(cognito_response)
@@ -243,11 +243,12 @@ def changePassword():
         access_token = loggedIn_user.id_token
         app.logger.debug(f'Decoding token {access_token}')
         decoded = jwt.decode(access_token, algorithms=["RS256"], options={"verify_signature": False})
-        mobile = decoded['custom:mobile']
-        app.logger.debug(f'Got mobile {mobile}')
+        phone_number = decoded['phone_number']
+        # mobile = decoded['custom:mobile']
+        app.logger.debug(f'Got phone number {phone_number}')
 
         sns = boto3.client('sns', region_name=Config.REGION_NAME)
-        sns.publish(PhoneNumber=mobile,
+        sns.publish(PhoneNumber=phone_number,
                     Message='Did you change your password? If not, please secure your account by resetting '
                             'password.')
 
