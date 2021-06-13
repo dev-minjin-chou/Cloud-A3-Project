@@ -84,9 +84,11 @@ def register():
         user_email = request.form.get("email")
         username = request.form.get("username")
         password = request.form.get("password")
+        mobile = request.form.get("mobile")
 
         try:
             aws_cognito.set_base_attributes(email=user_email)
+            aws_cognito.add_custom_attributes(mobile=mobile)
             cognito_response = aws_cognito.register(username, password)
             app.logger.debug('Cognito response:')
             app.logger.debug(cognito_response)
