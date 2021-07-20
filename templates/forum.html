@@ -1,0 +1,63 @@
+{% extends "index.html" %}
+
+{% block head %}
+    {{ super() }}
+{% endblock %}
+
+{% block body %}
+    {% if error_msg %}
+        <div class="alert alert-danger" role="alert">
+            Error: {{ error_msg }}
+        </div>
+    {% endif %}
+
+
+    <h3>Welcome back, {{ username }}!</h3><br>
+
+    <div class="card col-md-4">
+        <div class="card-body">
+            <form action="{{ url_for('createPost') }}" method="POST" enctype="multipart/form-data">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="message">Message:</label>
+                    </div>
+                    <div class="col-md-6">
+                        <input
+                                id="message"
+                                type="text"
+                                class="form-control"
+                                name="message"
+                        />
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <div class="col-md-4">
+                        <label for="message">Image:</label>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="file" name="file"/>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Post</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <table class="table mt-4">
+        <tr>
+            <th scope="col">Message</th>
+            <th scope="col">Posted Date</th>
+            <th scope="col">Username</th>
+        </tr>
+        {% for post in posts %}
+            <tr>
+                <td><a href="/users/{{ post['postedBy'] }}/posts/{{ post['_id'] }}">{{ post['message'] }}</a></td>
+                <td>{{ post['postedAt'] }}</td>
+                <td>{{ post['postedBy'] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

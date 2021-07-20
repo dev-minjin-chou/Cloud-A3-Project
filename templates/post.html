@@ -1,0 +1,77 @@
+{% extends "index.html" %}
+
+{% block head %}
+    {{ super() }}
+{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        {% if post %}
+            {% if post['image'] %}
+                <img src="{{ post['image'] }}" width="500" height="300" alt="no image"/>
+            {% endif %}
+
+            <form action="{{ url_for('likePost') }}" method="POST">
+                <input type="hidden"
+                       id="email"
+                       name="email"
+                       value="{{ post['email'] }}"
+                />
+
+                <div class="row my-3">
+                    <div class="col-md-4">
+                        <label for="message">Message:</label>
+                    </div>
+                    <div class="col-md-8">
+                        <input
+                                id="message"
+                                type="text"
+                                class="form-control"
+                                value="{{ post['message'] }}"
+                                disabled
+                        />
+                    </div>
+                </div>
+
+                <div class="row my-3">
+                    <div class="col-md-4">
+                        <label for="postedAt">Posted At:</label>
+                    </div>
+                    <div class="col-md-8">
+                        <input
+                                id="postedAt"
+                                type="text"
+                                class="form-control"
+                                value="{{ post['postedAt'] }}"
+                                disabled
+                        />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="row my-3">
+                        <div class="col-md-4">
+                            <label for="postedBy">Posted By:</label>
+                        </div>
+                        <div class="col-md-8">
+                            <input
+                                    id="postedBy"
+                                    type="text"
+                                    class="form-control"
+                                    value="{{ post['postedBy'] }}"
+                                    disabled
+                            />
+
+                            <input
+                                    name="postedBy"
+                                    type="hidden"
+                                    value="{{ post['postedBy'] }}"/>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success m-1">Like</button>
+            </form>
+        {% endif %}
+    </div>
+{% endblock %}

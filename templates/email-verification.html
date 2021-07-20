@@ -1,0 +1,41 @@
+{% extends "index.html" %}
+
+{% block head %}
+    {{ super() }}
+{% endblock %}
+
+{% block body %}
+    <br>
+    <h1>Sign up</h1><br>
+
+    {% if error_msg %}
+        <div class="alert alert-danger" role="alert">
+            Error: {{ error_msg }}
+        </div>
+    {% endif %}
+
+    {% if email %}
+        <div class="alert alert-info" role="alert">
+            Please input the verification code that is sent to email: {{ email }}
+        </div>
+    {% endif %}
+
+    <form action="{{ url_for('verifyEmail') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden"
+               id="username"
+               name="username"
+               value="{{ username }}"
+        />
+
+        <div class="form-group">
+            <label for="ver_code">Verification code:</label>
+            <input type="text"
+                   id="ver_code"
+                   name="ver_code"/>
+        </div>
+        <br/>
+        <br>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+{% endblock %}
