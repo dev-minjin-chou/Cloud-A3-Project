@@ -48,3 +48,6 @@ source venv/bin/activate
 # Start application
 python3 main.py
 ```
+
+## Project report:
+[report.pdf](https://github.com/kuntakinte777/Cloud-A3-Project/files/9186438/report.pdf)
